@@ -1,0 +1,43 @@
+{
+  "name": "@antarctic-wallet/aw-sdk",
+  "version": "0.2.2",
+  "description": "SDK for embedded mini-apps in Antarctic Wallet",
+  "type": "module",
+  "main": "./dist/aw-sdk.js",
+  "module": "./dist/aw-sdk.js",
+  "types": "./dist/aw-sdk.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/aw-sdk.d.ts",
+      "import": "./dist/aw-sdk.js"
+    },
+    "./vue": {
+      "types": "./dist/aw-sdk-vue.d.ts",
+      "import": "./dist/aw-sdk-vue.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "peerDependencies": {
+    "vue": "^3.3.0"
+  },
+  "peerDependenciesMeta": {
+    "vue": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "vite": "^6.1.0",
+    "typescript": "^5.7.0",
+    "vite-plugin-dts": "^4.5.0",
+    "vitest": "^3.0.0",
+    "vue": "^3.5.0"
+  }
+}
