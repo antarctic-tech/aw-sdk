@@ -54,6 +54,7 @@ export async function performHandshake(
     return {
       session: {
         sessionToken: ok.sessionToken,
+        idToken: ok.idToken ?? null,
         grantedScopes: ok.grantedScopes,
         userContext: ok.userContext ?? {},
         expiresAt: ok.expiresAt,

@@ -24,6 +24,7 @@ const sdk = new AWSDK({
 const session = await sdk.init();
 console.log('Session:', session.sessionToken);
 console.log('Scopes:', session.grantedScopes);
+console.log('idToken:', sdk.idToken); // signed OIDC token — forward to your backend
 ```
 
 ## Configuration
@@ -74,6 +75,35 @@ const status = await sdk.status();
 await sdk.refreshSession();
 ```
 
+## Authenticating the user (OIDC `id_token`)
+
+`sdk.idToken` is a signed JWT (`sub` = the user's trusted id). It is the **only**
+value safe to authenticate the user on your backend — `sdk.user` / `userContext`
+travels over `postMessage` and a malicious client can forge it (IDOR).
+
+```typescript
+// In the mini-app — forward the token to your own backend:
+await fetch('/api/auth/session', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ idToken: sdk.idToken }),
+});
+```
+
+```typescript
+// On YOUR backend — verify the signature against the host JWKS, then trust `sub`:
+import { createRemoteJWKSet, jwtVerify } from 'jose';
+
+const jwks = createRemoteJWKSet(new URL(`${AW_API_BASE}/api/v2/sdk/jwks`));
+const { payload } = await jwtVerify(idToken, jwks, { issuer: 'aw' });
+const userId = payload.sub; // trusted — can't be forged without AW's private key
+```
+
+`idToken` may be `null` while the session is still pending (no granted scopes yet)
+or when an older host hasn't issued one — always null-check before use. It rotates
+with the session (TTL ~600s); read the fresh value from `sdk.idToken` or the
+`session.refreshed` event.
+
 ## Operations
 
 Two-step flow: prepare, then request user confirmation.
@@ -105,7 +135,7 @@ Operation types: `'transfer'` | `'payment'`
 sdk.events.on('sdk.ready', (session) => { /* SDK initialized */ });
 sdk.events.on('sdk.error', ({ code, message }) => { /* error */ });
 sdk.events.on('scopes.granted', ({ scopes }) => { /* scopes granted */ });
-sdk.events.on('session.refreshed', ({ sessionToken, expiresAt }) => { /* refreshed */ });
+sdk.events.on('session.refreshed', ({ sessionToken, idToken, expiresAt }) => { /* refreshed */ });
 sdk.events.on('session.expired', () => { /* session expired */ });
 sdk.events.on('operation.succeeded', (result) => { /* operation done */ });
 sdk.events.on('operation.rejected', ({ operationId, reason }) => { /* rejected */ });

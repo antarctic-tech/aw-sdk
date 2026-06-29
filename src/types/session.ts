@@ -10,6 +10,11 @@ export type AWSessionStatus = 'active' | 'expired' | 'revoked';
  */
 export interface AWSession {
   sessionToken: string;
+  /**
+   * Подписанный OIDC id_token (sub = доверенный user_id). Форвардь на свой
+   * бэкенд для верификации через JWKS — не доверяй userContext для авторизации.
+   */
+  idToken?: string | null;
   grantedScopes: string[];
   userContext: AWUserContext;
   expiresAt: number;
@@ -20,6 +25,8 @@ export interface AWSession {
  */
 export interface AWSessionStatusResponse {
   status: AWSessionStatus;
+  /** Свежий id_token для активной сессии. */
+  idToken?: string | null;
   grantedScopes: string[];
   expiresAt: number;
 }

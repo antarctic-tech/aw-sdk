@@ -103,6 +103,15 @@ export class AWSDK {
     return this.session?.userContext ?? null;
   }
 
+  /**
+   * Подписанный OIDC id_token текущей сессии (доступен после init).
+   * Форвардь его на свой бэкенд: тот проверит подпись через JWKS хоста и достанет
+   * доверенный user_id из sub. Для авторизации используй ТОЛЬКО его, не userContext.
+   */
+  get idToken(): string | null {
+    return this.session?.idToken ?? null;
+  }
+
   // ============================================================================
   // Command Versioning
   // ============================================================================
@@ -161,6 +170,7 @@ export class AWSDK {
 
         this.session = {
           ...stored,
+          idToken: status.idToken ?? stored.idToken ?? null,
           grantedScopes: status.grantedScopes,
           expiresAt: status.expiresAt,
         };
@@ -236,20 +246,24 @@ export class AWSDK {
       (refreshed) => {
         this.sessionToken = refreshed.sessionToken;
 
-        // Обновляем сохранённую сессию
-        if (this.persistEnabled && this.session) {
-          const updated: AWSession = {
+        // Обновляем сессию в памяти всегда (иначе idToken протухнет без persist),
+        // сохраняем в storage — только если persist включён.
+        if (this.session) {
+          this.session = {
             ...this.session,
             sessionToken: refreshed.sessionToken,
+            idToken: refreshed.idToken ?? this.session.idToken ?? null,
             grantedScopes: refreshed.grantedScopes,
             expiresAt: refreshed.expiresAt,
           };
-          this.session = updated;
-          saveSession(this.config.appId, updated, this.logger);
+          if (this.persistEnabled) {
+            saveSession(this.config.appId, this.session, this.logger);
+          }
         }
 
         this.events.emit('session.refreshed', {
           sessionToken: refreshed.sessionToken,
+          idToken: refreshed.idToken ?? null,
           expiresAt: refreshed.expiresAt,
         });
       },
@@ -285,19 +299,22 @@ export class AWSDK {
     const result = await this.sessionModule.refresh();
     this.sessionToken = result.sessionToken;
 
-    if (this.persistEnabled && this.session) {
-      const updated: AWSession = {
+    if (this.session) {
+      this.session = {
         ...this.session,
         sessionToken: result.sessionToken,
+        idToken: result.idToken ?? this.session.idToken ?? null,
         grantedScopes: result.grantedScopes,
         expiresAt: result.expiresAt,
       };
-      this.session = updated;
-      saveSession(this.config.appId, updated, this.logger);
+      if (this.persistEnabled) {
+        saveSession(this.config.appId, this.session, this.logger);
+      }
     }
 
     this.events.emit('session.refreshed', {
       sessionToken: result.sessionToken,
+      idToken: result.idToken ?? null,
       expiresAt: result.expiresAt,
     });
   }

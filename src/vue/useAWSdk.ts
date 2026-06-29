@@ -70,6 +70,7 @@ export function useAWSdk(config: AWSDKConfig): UseAWSDKReturn {
         session.value = {
           ...session.value,
           sessionToken: data.sessionToken,
+          idToken: data.idToken ?? session.value.idToken ?? null,
           expiresAt: data.expiresAt,
         };
       }

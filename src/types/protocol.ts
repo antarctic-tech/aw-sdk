@@ -126,6 +126,12 @@ export interface SdkInitPayload {
  */
 export interface SdkInitOkPayload {
   sessionToken: string;
+  /**
+   * Подписанный OIDC id_token (JWT): sub = доверенный user_id. Мини-апа форвардит
+   * его на свой бэкенд, тот верифицирует подпись через JWKS хоста. null пока
+   * сессия pending. Единственный доверенный идентификатор юзера на бэкенде.
+   */
+  idToken?: string | null;
   grantedScopes: string[];
   userContext: AWUserContext;
   expiresAt: number;
@@ -146,6 +152,8 @@ export interface SdkInitFailPayload {
  */
 export interface SessionRefreshedPayload {
   sessionToken: string;
+  /** Свежий id_token (TTL ~600с) — обновляется вместе с сессией. */
+  idToken?: string | null;
   grantedScopes: string[];
   expiresAt: number;
 }
@@ -220,6 +228,8 @@ export interface OperationRejectedPayload {
  */
 export interface SessionStatusPayload {
   status: string;
+  /** Свежий id_token для активной сессии (null если pending/expired). */
+  idToken?: string | null;
   grantedScopes: string[];
   expiresAt: number;
 }
