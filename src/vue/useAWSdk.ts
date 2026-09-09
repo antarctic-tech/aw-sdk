@@ -64,16 +64,11 @@ export function useAWSdk(config: AWSDKConfig): UseAWSDKReturn {
       error.value = e instanceof Error ? e : new Error(String(e));
     }
 
-    // Обновлять сессию при рефреше
-    instance.events.on('session.refreshed', (data) => {
-      if (session.value) {
-        session.value = {
-          ...session.value,
-          sessionToken: data.sessionToken,
-          idToken: data.idToken ?? session.value.idToken ?? null,
-          expiresAt: data.expiresAt,
-        };
-      }
+    instance.events.on('session.refreshed', () => {
+      const current = instance.getSession();
+      if (!current) return;
+      session.value = current;
+      user.value = current.userContext ?? null;
     });
 
     // Обновлять ошибку при sdk.error

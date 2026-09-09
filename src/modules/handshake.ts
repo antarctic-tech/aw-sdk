@@ -10,6 +10,7 @@ import {
 import { InitErrorCodes } from '../types/errors';
 import { SDK_VERSION } from '../utils/version';
 import { AWInitError } from '../utils/errors';
+import { userContextFromIdToken } from '../utils/userContext';
 import type { RetryConfig } from '../utils/retry';
 import type { Logger } from '../utils/logger';
 
@@ -56,7 +57,7 @@ export async function performHandshake(
         sessionToken: ok.sessionToken,
         idToken: ok.idToken ?? null,
         grantedScopes: ok.grantedScopes,
-        userContext: ok.userContext ?? {},
+        userContext: userContextFromIdToken(ok.idToken),
         expiresAt: ok.expiresAt,
       },
       supportedCommands: ok.supportedCommands,

@@ -77,9 +77,10 @@ await sdk.refreshSession();
 
 ## Authenticating the user (OIDC `id_token`)
 
-`sdk.idToken` is a signed JWT (`sub` = the user's trusted id). It is the **only**
-value safe to authenticate the user on your backend — `sdk.user` / `userContext`
-travels over `postMessage` and a malicious client can forge it (IDOR).
+`sdk.idToken` is a signed JWT (`sub` = opaque per-app login). It is the **only**
+value safe to authenticate the user on your backend. `sdk.user` / `userContext`
+is decoded from the token in the mini-app without verifying the signature — use
+it for UI only (`displayName` is `sub` on purpose, not a personal name).
 
 ```typescript
 // In the mini-app — forward the token to your own backend:

@@ -30,7 +30,6 @@ describe('performHandshake', () => {
     const transport = makeTransport(ParentToIframeMessageType.SDK_INIT_OK, {
       sessionToken: 'tok-1',
       grantedScopes: ['user.profile.read'],
-      userContext: { userId: 'u1', displayName: 'Alice' },
       expiresAt: 9999,
       supportedCommands: { init: 1 },
     });
@@ -45,7 +44,7 @@ describe('performHandshake', () => {
 
   it('отправляет правильный payload в SDK_INIT', async () => {
     const transport = makeTransport(ParentToIframeMessageType.SDK_INIT_OK, {
-      sessionToken: 't', grantedScopes: [], userContext: {}, expiresAt: 0,
+      sessionToken: 't', grantedScopes: [], expiresAt: 0,
     });
 
     await performHandshake(transport, 'my-app', ['a', 'b'], 3000, mockLogger);
@@ -94,12 +93,33 @@ describe('performHandshake', () => {
     ).rejects.toThrow(AWInitError);
   });
 
-  it('userContext по умолчанию = {}', async () => {
+  it('userContext по умолчанию = {} без idToken', async () => {
     const transport = makeTransport(ParentToIframeMessageType.SDK_INIT_OK, {
-      sessionToken: 't', grantedScopes: [], userContext: undefined, expiresAt: 0,
+      sessionToken: 't', grantedScopes: [], expiresAt: 0,
     });
 
     const result = await performHandshake(transport, 'a', [], 1000, mockLogger);
     expect(result.session.userContext).toEqual({});
+  });
+
+  it('собирает userContext из idToken', async () => {
+    const payload = btoa(JSON.stringify({
+      sub: 'a1b2c3d4e5f60718',
+      userImage: 'https://t.me/i/userpic/320/abc.jpg',
+    })).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    const idToken = `e30.${payload}.sig`;
+
+    const transport = makeTransport(ParentToIframeMessageType.SDK_INIT_OK, {
+      sessionToken: 't',
+      idToken,
+      grantedScopes: [],
+      expiresAt: 0,
+    });
+
+    const result = await performHandshake(transport, 'a', [], 1000, mockLogger);
+    expect(result.session.userContext).toEqual({
+      displayName: 'a1b2c3d4e5f60718',
+      avatarUrl: 'https://t.me/i/userpic/320/abc.jpg',
+    });
   });
 });

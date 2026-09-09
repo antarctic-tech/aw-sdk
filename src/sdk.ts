@@ -11,6 +11,7 @@ import { ScopesModule } from './modules/scopes';
 import { Logger } from './utils/logger';
 import { type RetryConfig } from './utils/retry';
 import { saveSession, loadSession, clearSession } from './utils/storage';
+import { userContextFromIdToken } from './utils/userContext';
 import {
   AWCommand,
   isCommandAvailable,
@@ -97,7 +98,8 @@ export class AWSDK {
   // ============================================================================
 
   /**
-   * Контекст текущего пользователя (доступен после init)
+   * Контекст текущего пользователя (доступен после init).
+   * displayName — это `sub` (per-app login), его и показываем как имя.
    */
   get user(): AWUserContext | null {
     return this.session?.userContext ?? null;
@@ -168,11 +170,13 @@ export class AWSDK {
       if (status.status === 'active') {
         this.logger.log('Сессия восстановлена из sessionStorage');
 
+        const idToken = status.idToken ?? stored.idToken ?? null;
         this.session = {
           ...stored,
-          idToken: status.idToken ?? stored.idToken ?? null,
+          idToken,
           grantedScopes: status.grantedScopes,
           expiresAt: status.expiresAt,
+          userContext: userContextFromIdToken(idToken),
         };
         this.sessionToken = stored.sessionToken;
         this.initialized = true;
@@ -249,12 +253,14 @@ export class AWSDK {
         // Обновляем сессию в памяти всегда (иначе idToken протухнет без persist),
         // сохраняем в storage — только если persist включён.
         if (this.session) {
+          const idToken = refreshed.idToken ?? this.session.idToken ?? null;
           this.session = {
             ...this.session,
             sessionToken: refreshed.sessionToken,
-            idToken: refreshed.idToken ?? this.session.idToken ?? null,
+            idToken,
             grantedScopes: refreshed.grantedScopes,
             expiresAt: refreshed.expiresAt,
+            userContext: userContextFromIdToken(idToken),
           };
           if (this.persistEnabled) {
             saveSession(this.config.appId, this.session, this.logger);
@@ -300,12 +306,14 @@ export class AWSDK {
     this.sessionToken = result.sessionToken;
 
     if (this.session) {
+      const idToken = result.idToken ?? this.session.idToken ?? null;
       this.session = {
         ...this.session,
         sessionToken: result.sessionToken,
-        idToken: result.idToken ?? this.session.idToken ?? null,
+        idToken,
         grantedScopes: result.grantedScopes,
         expiresAt: result.expiresAt,
+        userContext: userContextFromIdToken(idToken),
       };
       if (this.persistEnabled) {
         saveSession(this.config.appId, this.session, this.logger);

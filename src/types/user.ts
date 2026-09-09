@@ -1,13 +1,12 @@
 /**
- * Контекст пользователя, полученный от кошелька при инициализации
+ * Контекст пользователя из id_token.
+ * displayName — это `sub` (непрозрачный per-app login): его и показываем как имя.
+ * avatarUrl — `userImage`, только https.
+ * Не использовать для авторизации.
  */
 export interface AWUserContext {
-  /** Внутренний ID пользователя в Antarctic Wallet */
-  userId?: string;
-  /** Отображаемое имя пользователя */
+  /** Per-app login (`sub`). Это и есть отображаемое имя. */
   displayName?: string;
-  /** Основной адрес кошелька */
-  walletAddress?: string;
-  /** URL аватара */
+  /** URL аватара (`userImage`) */
   avatarUrl?: string;
 }

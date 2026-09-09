@@ -1,5 +1,3 @@
-import type { AWUserContext } from './user';
-
 /**
  * Обёртка для всех postMessage сообщений
  */
@@ -133,7 +131,6 @@ export interface SdkInitOkPayload {
    */
   idToken?: string | null;
   grantedScopes: string[];
-  userContext: AWUserContext;
   expiresAt: number;
   /** Поддерживаемые команды хоста с версиями */
   supportedCommands?: Record<string, number>;
