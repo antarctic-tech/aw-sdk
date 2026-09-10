@@ -1,5 +1,6 @@
 // Основной класс
 export { AWSDK } from './sdk';
+export { BackButtonModule } from './modules/backButton';
 
 // Типы конфигурации
 export type { AWSDKConfig, AWRetryConfig } from './types/config';

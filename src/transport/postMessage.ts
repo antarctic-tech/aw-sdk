@@ -65,6 +65,13 @@ export class PostMessageTransport {
   }
 
   /**
+   * Отправить fire-and-forget сообщение без ожидания ответа (например, setup BackButton)
+   */
+  post<T>(type: string, payload: T): void {
+    this.send(type, payload);
+  }
+
+  /**
    * Ожидание ответа по ID запроса
    */
   private waitForResponse<T>(requestId: string, timeout: number = 30000): Promise<AWMessage<T>> {

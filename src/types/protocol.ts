@@ -21,6 +21,7 @@ export enum IframeToParentMessageType {
   GET_SESSION_STATUS = 'GET_SESSION_STATUS',
   GET_SCOPES = 'GET_SCOPES',
   GET_SCOPES_DATA = 'GET_SCOPES_DATA',
+  WEB_APP_SETUP_BACK_BUTTON = 'web_app_setup_back_button',
 }
 
 /**
@@ -40,6 +41,7 @@ export enum ParentToIframeMessageType {
   SCOPES_RESULT = 'SCOPES_RESULT',
   SCOPES_DATA_RESULT = 'SCOPES_DATA_RESULT',
   SCOPES_FAIL = 'SCOPES_FAIL',
+  BACK_BUTTON_PRESSED = 'back_button_pressed',
   ERROR = 'ERROR',
 }
 
@@ -243,6 +245,13 @@ export interface ScopesResultPayload {
  */
 export interface ScopesDataResultPayload {
   data: unknown;
+}
+
+/**
+ * Payload web_app_setup_back_button
+ */
+export interface SetupBackButtonPayload {
+  is_visible: boolean;
 }
 
 /**

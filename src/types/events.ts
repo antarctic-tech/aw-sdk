@@ -10,4 +10,5 @@ export type AWSDKEventMap = {
   'session.refreshed': { sessionToken: string; idToken?: string | null; expiresAt: number };
   'session.expired': void;
   'operation.rejected': { operationId: string; reason: string };
+  backButton: void;
 };

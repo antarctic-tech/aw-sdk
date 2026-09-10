@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.3.3](https://ssh.gitlab.awalltest.xyz/antarctic/frontend/aw-sdk/compare/v0.3.2...v0.3.3) (2026-09-10)
+
+
+### Features
+
+* **aw-2002:** BackButton API ([ae6f5a9](https://ssh.gitlab.awalltest.xyz/antarctic/frontend/aw-sdk/commit/ae6f5a9e593a89e8fae3ba7000a735fbad6fc70a))
+
 ### [0.3.2](https://ssh.gitlab.awalltest.xyz/antarctic/frontend/aw-sdk/compare/v0.3.1...v0.3.2) (2026-09-09)
 
 ### [0.3.1](https://gitlab.awalltest.xyz/antarctic/frontend/aw-sdk/compare/v0.3.0...v0.3.1) (2026-06-29)

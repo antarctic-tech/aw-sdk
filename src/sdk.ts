@@ -8,6 +8,7 @@ import { performHandshake } from './modules/handshake';
 import { OperationsModule } from './modules/operations';
 import { SessionModule } from './modules/session';
 import { ScopesModule } from './modules/scopes';
+import { BackButtonModule } from './modules/backButton';
 import { Logger } from './utils/logger';
 import { type RetryConfig } from './utils/retry';
 import { saveSession, loadSession, clearSession } from './utils/storage';
@@ -42,6 +43,7 @@ export class AWSDK {
   public readonly events = new TypedEmitter<AWSDKEventMap>();
   public readonly operations: OperationsModule;
   public readonly scopes: ScopesModule;
+  public readonly backButton: BackButtonModule;
 
   private sessionModule: SessionModule;
 
@@ -72,6 +74,7 @@ export class AWSDK {
     );
 
     this.scopes = new ScopesModule(this.transport, timeout, this.logger, this.retryConfig);
+    this.backButton = new BackButtonModule(this.transport, this.logger);
   }
 
   // ============================================================================
@@ -338,6 +341,7 @@ export class AWSDK {
    * Очистка всех ресурсов
    */
   destroy(): void {
+    this.backButton.reset();
     this.sessionModule.destroy();
     this.transport.destroy();
     this.events.removeAllListeners();
@@ -364,6 +368,11 @@ export class AWSDK {
       if (message.type === ParentToIframeMessageType.OPERATION_REJECTED) {
         const payload = message.payload as { operationId: string; reason: string };
         this.events.emit('operation.rejected', payload);
+      }
+
+      if (message.type === ParentToIframeMessageType.BACK_BUTTON_PRESSED) {
+        this.backButton.handlePressed();
+        this.events.emit('backButton');
       }
     });
   }

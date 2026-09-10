@@ -130,6 +130,22 @@ if (result.status === 'succeeded') {
 
 Operation types: `'transfer'` | `'payment'`
 
+## Back Button
+
+Control the host container's back button. When shown, the host header swaps "Close" for a back arrow. Pressing it only delivers an event to your app: navigation is fully on your side, the container stays open.
+
+```typescript
+sdk.backButton.show(); // header shows the back arrow
+sdk.backButton.hide(); // header returns to "Close"
+sdk.backButton.isVisible; // boolean
+
+const handler = () => router.back();
+sdk.backButton.onClick(handler);
+sdk.backButton.offClick(handler);
+```
+
+On Android the hardware back button follows the same contract while the arrow is visible.
+
 ## Events
 
 ```typescript
@@ -140,6 +156,7 @@ sdk.events.on('session.refreshed', ({ sessionToken, idToken, expiresAt }) => { /
 sdk.events.on('session.expired', () => { /* session expired */ });
 sdk.events.on('operation.succeeded', (result) => { /* operation done */ });
 sdk.events.on('operation.rejected', ({ operationId, reason }) => { /* rejected */ });
+sdk.events.on('backButton', () => { /* back pressed in the host chrome */ });
 ```
 
 ## Error Handling
