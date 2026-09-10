@@ -7,7 +7,7 @@ const STORAGE_KEY = 'aw-sdk:session:test-app';
 
 const makeSession = (overrides?: Partial<AWSession>): AWSession => ({
   sessionToken: 'tok-1',
-  grantedScopes: ['user.profile.read'],
+  grantedScopes: ['userData'],
   userContext: { displayName: 'Alice', avatarUrl: 'https://t.me/i/userpic/320/abc.jpg' },
   expiresAt: Date.now() + 60_000,
   ...overrides,

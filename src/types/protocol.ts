@@ -16,7 +16,6 @@ export interface AWMessage<T = unknown> {
 export enum IframeToParentMessageType {
   SDK_INIT = 'SDK_INIT',
   SESSION_REFRESH = 'SESSION_REFRESH',
-  PREPARE_OPERATION = 'PREPARE_OPERATION',
   REQUEST_OPERATION_CONFIRM = 'REQUEST_OPERATION_CONFIRM',
   GET_SESSION_STATUS = 'GET_SESSION_STATUS',
   GET_SCOPES = 'GET_SCOPES',
@@ -32,8 +31,6 @@ export enum ParentToIframeMessageType {
   SDK_INIT_FAIL = 'SDK_INIT_FAIL',
   SESSION_REFRESHED = 'SESSION_REFRESHED',
   SESSION_REFRESH_FAIL = 'SESSION_REFRESH_FAIL',
-  OPERATION_PREPARED = 'OPERATION_PREPARED',
-  OPERATION_PREPARE_FAIL = 'OPERATION_PREPARE_FAIL',
   OPERATION_APPROVED = 'OPERATION_APPROVED',
   OPERATION_REJECTED = 'OPERATION_REJECTED',
   SESSION_STATUS = 'SESSION_STATUS',
@@ -60,7 +57,6 @@ export const PROTOCOL_VERSION = '1.0';
 export enum AWCommand {
   Init = 'init',
   SessionRefresh = 'session_refresh',
-  PrepareOperation = 'prepare_operation',
   RequestConfirm = 'request_confirm',
   GetSessionStatus = 'get_session_status',
   GetScopes = 'get_scopes',
@@ -73,7 +69,6 @@ export enum AWCommand {
 export const COMMAND_VERSIONS: Record<AWCommand, number> = {
   [AWCommand.Init]: 1,
   [AWCommand.SessionRefresh]: 1,
-  [AWCommand.PrepareOperation]: 1,
   [AWCommand.RequestConfirm]: 1,
   [AWCommand.GetSessionStatus]: 1,
   [AWCommand.GetScopes]: 1,
@@ -161,39 +156,6 @@ export interface SessionRefreshedPayload {
  * Payload SESSION_REFRESH_FAIL
  */
 export interface SessionRefreshFailPayload {
-  code: string;
-  message: string;
-}
-
-/**
- * Payload PREPARE_OPERATION
- */
-export interface PrepareOperationPayload {
-  type: string;
-  amount: string;
-  currency: string;
-  to: string;
-  description?: string;
-  metadata?: Record<string, unknown>;
-}
-
-/**
- * Payload OPERATION_PREPARED
- */
-export interface OperationPreparedPayload {
-  operationId: string;
-  type: string;
-  status: string;
-  amount: string;
-  currency: string;
-  to: string;
-  description?: string;
-}
-
-/**
- * Payload OPERATION_PREPARE_FAIL
- */
-export interface OperationPrepareFailPayload {
   code: string;
   message: string;
 }

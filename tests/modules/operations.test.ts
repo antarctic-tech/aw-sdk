@@ -22,65 +22,6 @@ function makeTransport(responseType: string, payload: unknown) {
 }
 
 describe('OperationsModule', () => {
-  describe('prepare', () => {
-    const params = {
-      type: 'transfer' as const,
-      amount: '100',
-      currency: 'USDT',
-      to: '0xabc',
-    };
-
-    it('возвращает операцию при OPERATION_PREPARED', async () => {
-      const transport = makeTransport(ParentToIframeMessageType.OPERATION_PREPARED, {
-        operationId: 'op-1',
-        type: 'transfer',
-        status: 'pending',
-        amount: '100',
-        currency: 'USDT',
-        to: '0xabc',
-      });
-      const mod = new OperationsModule(transport, 5000, mockLogger);
-
-      const result = await mod.prepare(params);
-
-      expect(result.operationId).toBe('op-1');
-      expect(result.status).toBe('pending');
-    });
-
-    it('отправляет PREPARE_OPERATION с payload', async () => {
-      const transport = makeTransport(ParentToIframeMessageType.OPERATION_PREPARED, {
-        operationId: 'op-1', type: 'transfer', status: 'pending', amount: '100', currency: 'USDT', to: '0x',
-      });
-      const mod = new OperationsModule(transport, 3000, mockLogger);
-
-      await mod.prepare(params);
-
-      expect(transport.sendAndWait).toHaveBeenCalledWith(
-        IframeToParentMessageType.PREPARE_OPERATION,
-        params,
-        3000,
-        undefined,
-      );
-    });
-
-    it('кидает AWOperationError при OPERATION_PREPARE_FAIL', async () => {
-      const transport = makeTransport(ParentToIframeMessageType.OPERATION_PREPARE_FAIL, {
-        code: OperationErrorCodes.InvalidAmount,
-        message: 'Amount too small',
-      });
-      const mod = new OperationsModule(transport, 5000, mockLogger);
-
-      await expect(mod.prepare(params)).rejects.toThrow(AWOperationError);
-    });
-
-    it('кидает AWOperationError при неожиданном типе', async () => {
-      const transport = makeTransport('UNEXPECTED', {});
-      const mod = new OperationsModule(transport, 5000, mockLogger);
-
-      await expect(mod.prepare(params)).rejects.toThrow(AWOperationError);
-    });
-  });
-
   describe('requestConfirmation', () => {
     it('возвращает результат при OPERATION_APPROVED', async () => {
       const transport = makeTransport(ParentToIframeMessageType.OPERATION_APPROVED, {
@@ -95,6 +36,22 @@ describe('OperationsModule', () => {
       expect(result.operationId).toBe('op-1');
       expect(result.txId).toBe('tx-42');
       expect(result.status).toBe('succeeded');
+    });
+
+    it('отправляет REQUEST_OPERATION_CONFIRM с operationId', async () => {
+      const transport = makeTransport(ParentToIframeMessageType.OPERATION_APPROVED, {
+        operationId: 'op-1',
+        status: 'succeeded',
+      });
+      const mod = new OperationsModule(transport, 3000, mockLogger);
+
+      await mod.requestConfirmation('op-1');
+
+      expect(transport.sendAndWait).toHaveBeenCalledWith(
+        IframeToParentMessageType.REQUEST_OPERATION_CONFIRM,
+        { operationId: 'op-1' },
+        3000,
+      );
     });
 
     it('кидает AWOperationError при OPERATION_REJECTED', async () => {
@@ -114,11 +71,20 @@ describe('OperationsModule', () => {
       }
     });
 
+    it('кидает AWOperationError при неожиданном типе ответа', async () => {
+      const transport = makeTransport('UNEXPECTED', {});
+      const mod = new OperationsModule(transport, 5000, mockLogger);
+
+      await expect(mod.requestConfirmation('op-1')).rejects.toThrow(AWOperationError);
+    });
+
     it('не использует retry (ожидание пользователя)', async () => {
       const transport = makeTransport(ParentToIframeMessageType.OPERATION_APPROVED, {
-        operationId: 'op-1', status: 'succeeded', txId: 'tx-1',
+        operationId: 'op-1',
+        status: 'succeeded',
+        txId: 'tx-1',
       });
-      const mod = new OperationsModule(transport, 5000, mockLogger, { maxAttempts: 3, baseDelay: 100 });
+      const mod = new OperationsModule(transport, 5000, mockLogger);
 
       await mod.requestConfirmation('op-1');
 

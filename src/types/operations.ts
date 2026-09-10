@@ -1,7 +1,8 @@
 /**
- * Доступные типы операций
+ * Типы операций, которые создаёт бэкенд партнёра
+ * через POST {AW_API_BASE}/api/apps/v1/intents
  */
-export type AWOperationType = 'transfer' | 'payment';
+export type AWOperationType = 'pay' | 'receive' | 'scopes';
 
 /**
  * Статус операции
@@ -13,31 +14,6 @@ export type AWOperationStatus =
   | 'succeeded'
   | 'failed'
   | 'rejected';
-
-/**
- * Параметры для создания намерения операции
- */
-export interface AWOperationIntentParams {
-  type: AWOperationType;
-  amount: string;
-  currency: string;
-  to: string;
-  description?: string;
-  metadata?: Record<string, unknown>;
-}
-
-/**
- * Ответ на подготовку операции
- */
-export interface AWOperationIntent {
-  operationId: string;
-  type: AWOperationType;
-  status: AWOperationStatus;
-  amount: string;
-  currency: string;
-  to: string;
-  description?: string;
-}
 
 /**
  * Результат подтверждённой операции

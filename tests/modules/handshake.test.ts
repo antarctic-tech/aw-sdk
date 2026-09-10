@@ -29,15 +29,15 @@ describe('performHandshake', () => {
   it('возвращает сессию при SDK_INIT_OK', async () => {
     const transport = makeTransport(ParentToIframeMessageType.SDK_INIT_OK, {
       sessionToken: 'tok-1',
-      grantedScopes: ['user.profile.read'],
+      grantedScopes: ['userData'],
       expiresAt: 9999,
       supportedCommands: { init: 1 },
     });
 
-    const result = await performHandshake(transport, 'app-1', ['user.profile.read'], 5000, mockLogger);
+    const result = await performHandshake(transport, 'app-1', ['userData'], 5000, mockLogger);
 
     expect(result.session.sessionToken).toBe('tok-1');
-    expect(result.session.grantedScopes).toEqual(['user.profile.read']);
+    expect(result.session.grantedScopes).toEqual(['userData']);
     expect(result.session.expiresAt).toBe(9999);
     expect(result.supportedCommands).toEqual({ init: 1 });
   });

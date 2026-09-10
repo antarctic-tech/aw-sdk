@@ -1,8 +1,30 @@
 {
   "name": "@antarctic-wallet/aw-sdk",
-  "version": "0.3.4",
+  "version": "0.4.0",
   "description": "SDK for embedded mini-apps in Antarctic Wallet",
+  "keywords": [
+    "antarctic-wallet",
+    "mini-app",
+    "miniapp",
+    "wallet",
+    "sdk",
+    "iframe",
+    "postmessage",
+    "payments",
+    "oidc"
+  ],
+  "license": "MIT",
+  "author": "Antarctic Tech",
+  "homepage": "https://github.com/antarctic-tech/aw-sdk#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/antarctic-tech/aw-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/antarctic-tech/aw-sdk/issues"
+  },
   "type": "module",
+  "sideEffects": false,
   "main": "./dist/aw-sdk.js",
   "module": "./dist/aw-sdk.js",
   "types": "./dist/aw-sdk.d.ts",
@@ -17,13 +39,25 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "README.ru.md",
+    "CHANGELOG.md",
+    "LICENSE"
   ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
   },
   "peerDependencies": {
     "vue": "^3.3.0"

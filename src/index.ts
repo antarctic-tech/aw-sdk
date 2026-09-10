@@ -15,8 +15,6 @@ export type { AWUserContext } from './types/user';
 export type {
   AWOperationType,
   AWOperationStatus,
-  AWOperationIntentParams,
-  AWOperationIntent,
   AWOperationResult,
 } from './types/operations';
 

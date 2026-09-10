@@ -38,7 +38,7 @@ export interface UseAWSDKReturn {
  *
  * const { sdk, session, user, isReady, error } = useAWSdk({
  *   appId: 'my-app',
- *   scopes: ['balance:read'],
+ *   scopes: ['userData', 'balance'],
  *   parentOrigin: 'https://wallet.antarctic.com',
  * });
  * </script>

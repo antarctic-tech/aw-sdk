@@ -59,12 +59,7 @@ export class AWSDK {
       baseDelay: config.retry?.baseDelay ?? DEFAULT_RETRY.baseDelay,
     };
 
-    this.operations = new OperationsModule(
-      this.transport,
-      timeout,
-      this.logger,
-      this.retryConfig,
-    );
+    this.operations = new OperationsModule(this.transport, timeout, this.logger);
 
     this.sessionModule = new SessionModule(
       this.transport,

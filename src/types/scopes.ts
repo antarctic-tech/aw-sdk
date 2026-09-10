@@ -1,10 +1,11 @@
 /**
- * Доступные разрешения для встроенных приложений
+ * Разрешения, которые кошелёк выдаёт мини-приложению.
+ *
+ * `receive` сюда не входит: это тип интента (выплата пользователю),
+ * и он не требует вообще никакого скоупа.
  */
 export enum AWScope {
-  USER_PROFILE_READ = 'user.profile.read',
-  ACCOUNTS_READ = 'accounts.read',
-  ACCOUNTS_BALANCES_READ = 'accounts.balances.read',
-  TRANSFERS_CREATE = 'transfers.create',
-  PAYMENTS_CREATE = 'payments.create',
+  USER_DATA = 'userData',
+  BALANCE = 'balance',
+  PAY = 'pay',
 }

@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.4.0](https://github.com/antarctic-tech/aw-sdk/compare/v0.3.4...v0.4.0) (2026-09-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* **aw-2013:** удалён `sdk.operations.prepare()` и связанные с ним типы;
+изменены значения `AWScope` и `AWOperationType`.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_012URvKNyzbtqcgJHRxaDoJs
+
+### Features
+
+* **aw-2013:** привести операции и скоупы к контракту кошелька ([2c8a664](https://github.com/antarctic-tech/aw-sdk/commit/2c8a6646db6bd6557a027b6ffeb3bc700ca7e736))
+
+
+### Bug Fixes
+
+* **aw-2013:** брать SDK_VERSION из package.json ([2439dae](https://github.com/antarctic-tech/aw-sdk/commit/2439daec4911d18ce15b4b794058aeeeb29e9343))
+
 ### [0.3.4](https://ssh.gitlab.awalltest.xyz/antarctic/frontend/aw-sdk/compare/v0.3.3...v0.3.4) (2026-09-10)
 
 ### [0.3.3](https://ssh.gitlab.awalltest.xyz/antarctic/frontend/aw-sdk/compare/v0.3.2...v0.3.3) (2026-09-10)

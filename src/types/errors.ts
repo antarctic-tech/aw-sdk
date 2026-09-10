@@ -39,7 +39,7 @@ export const SessionErrorMessage: Record<SessionErrorCodes, string> = {
 };
 
 /**
- * Коды ошибок операций (transfer, payment)
+ * Коды ошибок операций (pay, receive, scopes)
  */
 export enum OperationErrorCodes {
   UserRejected = 'user_rejected',
