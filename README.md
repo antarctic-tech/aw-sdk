@@ -242,9 +242,112 @@ browser tab reported. The tab can be closed mid-flow. See the
 [backend example](https://github.com/antarctic-tech/example-app/tree/master/examples/backend-node)
 for signature verification and idempotency.
 
+Where the money goes — the app account, the cooling period, top-up and
+withdrawal — is in [Money flow](#money-flow).
+
 > **Removed in 0.4.0:** `sdk.operations.prepare()`. Creating an operation from
 > the browser was never safe, and the wallet-side flow requires a server-created
 > intent. See [Migration](#migrating-from-03x).
+
+<a id="money-flow"></a>
+
+## Money flow
+
+Balances are in USD inside Antarctic Wallet. Each mini-app has one account:
+its own balance, kept apart from the developer's personal balance.
+
+A `scopes` intent does not move funds.
+
+### The user and the app account
+
+```mermaid
+flowchart LR
+  User[User balance]
+  Account[App account]
+
+  User -- "Payment, confirmed in the wallet" --> Account
+  Account -- "Payout, no extra confirmation" --> User
+```
+
+#### Payment — the user pays the app
+
+Money moves from the user's balance to the app account. Your backend creates
+a `pay` intent; the wallet asks the user to confirm, and the transfer happens
+only after the user confirms. Transfers require the `pay` scope.
+
+The amount moved from the user's balance to the app account is held on the app
+account for the cooling period. It is already on the account, but those funds
+cannot yet be used for a payout or a withdrawal to the developer's account.
+
+#### Payout — the app pays the user
+
+Money moves from the app account to the user's balance. Your backend creates
+a `receive` intent. There is no confirmation sheet: when the API responds, the
+transfer is already done.
+
+Only the **available** amount on the app account can be paid out.
+
+### The developer and the app account
+
+```mermaid
+flowchart LR
+  Dev[Developer balance]
+  Account[App account]
+
+  Dev -- "Top-up, confirmed in the wallet" --> Account
+  Account -- "Withdrawal of the available amount, confirmed in the wallet" --> Dev
+```
+
+#### Top-up — the developer funds the app account
+
+The developer transfers money from their personal balance to the app account
+and confirms the transfer in the wallet. The cooling period does not apply to
+this deposit: the amount is available for the app to use as soon as it is
+credited. That is how you fund payouts while payments from users are still
+cooling.
+
+#### Withdrawal — the developer takes money out
+
+The developer can withdraw only the **available** amount, and only back to
+their own balance. The withdrawal is confirmed in the wallet. A withdrawal to
+someone else's balance is not possible.
+
+### Cooling period
+
+The cooling period applies only to payments from users. It does not apply to
+deposits the developer makes into the app account.
+
+```mermaid
+sequenceDiagram
+  participant User as User balance
+  participant Account as App account
+
+  User->>Account: Payment confirmed
+  Note over Account: Account balance increases
+  Note over Account: That payment stays unavailable until cooling ends
+  Note over Account: Cooling ends — the payment becomes available
+  Account->>User: Payout from the available amount only
+```
+
+| Funds in the app account | Available to pay out or withdraw |
+| --- | --- |
+| User payment still cooling | No |
+| User payment after the cooling period | Yes |
+| Developer deposit | Yes, immediately |
+
+The available amount is the app account balance minus user payments that are
+still cooling. Payouts and withdrawals both use only this amount.
+
+### App status
+
+| Status | Users can pay the app | App can pay users | Developer can top up | Developer can withdraw |
+| --- | --- | --- | --- | --- |
+| Active | Yes | Yes, from the available amount | Yes | Yes, the available amount, own balance only |
+| Suspended | Yes | No | Yes | No |
+| Blocked | No | No | No | No |
+
+Suspension stops payouts and withdrawals. The app can still accept user
+payments, and the developer can still top the app account up.
 
 ## Session management
 

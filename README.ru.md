@@ -2,8 +2,8 @@
 
 [English](./README.md) · **Русский**
 
-[![npm](https://img.shields.io/npm/v/@antarctic-wallet/aw-sdk.svg)](https://www.npmjs.com/package/@antarctic-wallet/aw-sdk)
-[![license](https://img.shields.io/npm/l/@antarctic-wallet/aw-sdk.svg)](./LICENSE)
+![npm](https://img.shields.io/npm/v/@antarctic-wallet/aw-sdk.svg)
+![license](https://img.shields.io/npm/l/@antarctic-wallet/aw-sdk.svg)
 
 SDK для встроенных мини-приложений Antarctic Wallet (AW). Берёт на себя
 безопасный канал iframe ↔ кошелёк, хендшейк, сессию и скоупы, а также запрос
@@ -15,12 +15,14 @@ SDK для встроенных мини-приложений Antarctic Wallet (
 
 Готовые сквозные стартеры (фронт + бэкенд партнёра + Docker) лежат в отдельном репозитории:
 
-| Стек | Пример |
-| ---- | ------ |
-| Vue 3 | [examples/vue](https://github.com/antarctic-tech/example-app/tree/master/examples/vue) |
-| React | [examples/react](https://github.com/antarctic-tech/example-app/tree/master/examples/react) |
-| Angular | [examples/angular](https://github.com/antarctic-tech/example-app/tree/master/examples/angular) |
+
+| Стек          | Пример                                                                                                   |
+| ------------- | -------------------------------------------------------------------------------------------------------- |
+| Vue 3         | [examples/vue](https://github.com/antarctic-tech/example-app/tree/master/examples/vue)                   |
+| React         | [examples/react](https://github.com/antarctic-tech/example-app/tree/master/examples/react)               |
+| Angular       | [examples/angular](https://github.com/antarctic-tech/example-app/tree/master/examples/angular)           |
 | Бэкенд (Node) | [examples/backend-node](https://github.com/antarctic-tech/example-app/tree/master/examples/backend-node) |
+
 
 - Репозиторий: **[antarctic-tech/example-app](https://github.com/antarctic-tech/example-app)**
 - Машиночитаемая спека для ИИ-инструментов: [AGENTS.md](https://github.com/antarctic-tech/example-app/blob/master/AGENTS.md)
@@ -42,9 +44,9 @@ iframe + нативный UI   ваш фронт + SDK           секрет, �
 1. Кошелёк открывает ваш фронт в iframe и передаёт `?parentOrigin=`.
 2. Фронт создаёт `AWSDK` и вызывает `init()`.
 3. Операцию создаёт **ваш бэкенд** (`POST {AW_API_BASE}/api/apps/v1/intents`)
-   с секретом приложения. Браузер секрет не видит.
+  с секретом приложения. Браузер секрет не видит.
 4. Фронт только просит кошелёк подтвердить полученный id:
-   `sdk.operations.requestConfirmation(operationId)`.
+  `sdk.operations.requestConfirmation(operationId)`.
 
 ## Установка
 
@@ -211,11 +213,13 @@ null. Токен ротируется вместе с сессией (TTL ~600 �
 Кошелёк показывает нативный лист: пользователь подтверждает или отклоняет
 ```
 
-| Тип | Смысл | Подтверждение |
-| --- | ----- | ------------- |
-| `pay` | Пользователь платит вам (покупка, донат) | Да — нативный лист в кошельке |
+
+| Тип       | Смысл                                                                    | Подтверждение                    |
+| --------- | ------------------------------------------------------------------------ | -------------------------------- |
+| `pay`     | Пользователь платит вам (покупка, донат)                                 | Да — нативный лист в кошельке    |
 | `receive` | Вы платите пользователю (возврат, выплата). Не скоуп и скоупа не требует | Нет — уже выполнено в ответе API |
-| `scopes` | Запросить дополнительные разрешения | Да — нативный лист в кошельке |
+| `scopes`  | Запросить дополнительные разрешения                                      | Да — нативный лист в кошельке    |
+
 
 ```typescript
 // 1. Ваш бэкенд создаёт интент и возвращает его id
@@ -232,9 +236,8 @@ if (status === 'pending') {
 }
 ```
 
-`AWOperationStatus` — это `'pending' | 'awaiting_confirmation' | 'confirmed' |
-'succeeded' | 'failed' | 'rejected'`. Отказ пользователя приходит **брошенным
-`AWOperationError`** с `errorCode === 'user_rejected'`, а также событием
+`AWOperationStatus` — это `'pending' | 'awaiting_confirmation' | 'confirmed' | 'succeeded' | 'failed' | 'rejected'`. Отказ пользователя приходит **брошенным
+`AWOperationError**` с `errorCode === 'user_rejected'`, а также событием
 `operation.rejected`.
 
 В проде закрывайте заказ вебхуком от AW (`intent.approved`, `intent.rejected`,
@@ -242,9 +245,113 @@ if (status === 'pending') {
 могут закрыть на середине. Проверка подписи и идемпотентность — в
 [примере бэкенда](https://github.com/antarctic-tech/example-app/tree/master/examples/backend-node).
 
+Куда уходят деньги — счёт приложения, срок охлаждения, пополнение и вывод — в разделе
+[Движение средств](#money-flow).
+
 > **Удалено в 0.4.0:** `sdk.operations.prepare()`. Создавать операцию из
 > браузера было небезопасно, а кошелёк всё равно ждёт интент, созданный
 > сервером. См. [Миграцию](#миграция-с-03x).
+
+
+
+## Движение средств
+
+Балансы в USD внутри Antarctic Wallet. У каждого мини-приложения один счёт: собственный баланс, отдельно от личного баланса разработчика.
+
+Интент `scopes` не приводит к движению средств.
+
+### Пользователь и счёт приложения
+
+```mermaid
+flowchart LR
+  User[Баланс пользователя]
+  Account[Счёт приложения]
+
+  User -- "Оплата, подтверждение в кошельке" --> Account
+  Account -- "Выплата, без отдельного подтверждения" --> User
+```
+
+
+
+#### Оплата — пользователь платит приложению
+
+Деньги идут с баланса пользователя на счёт приложения. Бэкенд создаёт интент
+`pay`; кошелёк запрашивает у пользователя подтверждение, и перевод проходит только после подтверждения пользователем. Для переводов требуется scope `pay`.
+
+Сумма, переведённая со счета пользователя на счет приложения, удерживается на счете приложения в течение периода охлаждения. Сумма уже на счёте, но сделать этими средствами выплату или вывод на счёт разработчика ещё нельзя.
+
+#### Выплата — приложение платит пользователю
+
+Деньги идут со счёта приложения на баланс пользователя. Бэкенд создаёт интент
+`receive`. Отдельного подтверждения нет: к моменту ответа API перевод уже
+выполнен.
+
+Выплатить можно только **доступную** сумму со счета приложения.
+
+### Разработчик и счёт приложения
+
+```mermaid
+flowchart LR
+  Dev[Баланс разработчика]
+  Account[Счёт приложения]
+
+  Dev -- "Пополнение, подтверждение в кошельке" --> Account
+  Account -- "Вывод доступной суммы, подтверждение в кошельке" --> Dev
+```
+
+
+
+#### Пополнение — разработчик пополняет счёт приложения
+
+Разработчик переводит деньги со своего личного баланса на счёт приложения и подтверждает перевод в кошельке. Срок охлаждения на этот депозит не распространяется: сумма доступна для распоряжения приложением сразу после зачисления. Так можно финансировать выплаты, пока оплаты от пользователей ещё на охлаждении.
+
+#### Вывод — разработчик забирает деньги
+
+Разработчик может вывести только **доступную** сумму и только на свой собственный
+баланс. Вывод подтверждается в кошельке. На чужой баланс вывести нельзя.
+
+### Срок охлаждения
+
+Срок охлаждения действует только на оплаты пользователя. На депозиты
+разработчика на счёт приложения он не распространяется.
+
+```mermaid
+sequenceDiagram
+  participant User as Баланс пользователя
+  participant Account as Счёт приложения
+
+  User->>Account: Оплата подтверждена
+  Note over Account: Баланс счёта увеличивается
+  Note over Account: Эта оплата недоступна, пока не кончится охлаждение
+  Note over Account: Охлаждение кончилось — сумма стала доступной
+  Account->>User: Выплата только из доступной суммы
+```
+
+
+
+
+| Средства на счёте                            | Можно выплатить или вывести |
+| -------------------------------------------- | --------------------------- |
+| Оплата пользователя, охлаждение ещё идёт     | Нет                         |
+| Оплата пользователя после периода охлаждения | Да                          |
+| Депозит разработчика                         | Да, сразу                   |
+
+
+Доступная сумма — это баланс счёта минус оплаты пользователя, которые ещё
+охлаждаются. И выплаты, и вывод берутся только из неё.
+
+### Статус приложения
+
+
+| Статус         | Пользователь может платить | Приложение может платить пользователю | Разработчик может пополнить | Разработчик может вывести                  |
+| -------------- | -------------------------- | ------------------------------------- | --------------------------- | ------------------------------------------ |
+| Активно        | Да                         | Да, из доступной суммы                | Да                          | Да, доступная сумма, только на свой баланс |
+| Приостановлено | Да                         | Нет                                   | Да                          | Нет                                        |
+| Заблокировано  | Нет                        | Нет                                   | Нет                         | Нет                                        |
+
+
+Приостановка останавливает выплаты и вывод. Принимать оплаты пользователей
+при этом можно, и разработчик по-прежнему может пополнить счёт.
 
 ## Сессия
 
@@ -286,15 +393,17 @@ sdk.backButton.offClick(handler);
 
 Подписывайтесь **до** `init()`.
 
-| Событие | Payload | Когда |
-| ------- | ------- | ----- |
-| `sdk.ready` | `AWSession` | Хендшейк прошёл (или восстановлена сохранённая сессия) |
-| `sdk.error` | `{ code, message }` | Плохой origin, хост недоступен, `init` не удался |
-| `scopes.granted` | `{ scopes }` | Летит с выданным набором при ready и после операции `scopes` |
-| `session.refreshed` | `{ sessionToken, idToken, expiresAt }` | Сессия обновилась — возьмите свежий `idToken` |
-| `session.expired` | — | Сессия мертва: сбросьте UI и вызовите `init()` заново |
-| `operation.rejected` | `{ operationId, reason }` | В кошельке нажали «отклонить» |
-| `backButton` | — | Нажата стрелка «Назад» в шапке хоста |
+
+| Событие              | Payload                                | Когда                                                        |
+| -------------------- | -------------------------------------- | ------------------------------------------------------------ |
+| `sdk.ready`          | `AWSession`                            | Хендшейк прошёл (или восстановлена сохранённая сессия)       |
+| `sdk.error`          | `{ code, message }`                    | Плохой origin, хост недоступен, `init` не удался             |
+| `scopes.granted`     | `{ scopes }`                           | Летит с выданным набором при ready и после операции `scopes` |
+| `session.refreshed`  | `{ sessionToken, idToken, expiresAt }` | Сессия обновилась — возьмите свежий `idToken`                |
+| `session.expired`    | —                                      | Сессия мертва: сбросьте UI и вызовите `init()` заново        |
+| `operation.rejected` | `{ operationId, reason }`              | В кошельке нажали «отклонить»                                |
+| `backButton`         | —                                      | Нажата стрелка «Назад» в шапке хоста                         |
+
 
 ```typescript
 sdk.events.on('session.refreshed', ({ idToken }) => {
@@ -309,13 +418,15 @@ sdk.events.on('session.expired', () => {
 
 Все ошибки наследуют `AWSDKError`. Ловите через `instanceof`, не по `message`.
 
-| Класс | Когда | Доп. поля |
-| ----- | ----- | --------- |
-| `AWInitError` | `init()` не удался: хендшейк, конфиг, отклонённые скоупы, таймаут | `errorCode: InitErrorCodes` |
-| `AWSessionError` | Сессия недействительна, истекла или отозвана | `errorCode: SessionErrorCodes` |
-| `AWScopeError` | Нужный скоуп не выдан | `errorCode: ScopeErrorCodes` |
-| `AWOperationError` | Операция не прошла или отклонена | `operationId`, `errorCode: OperationErrorCodes` |
-| `AWTimeoutError` | Ответа не было дольше `timeout` | — |
+
+| Класс              | Когда                                                             | Доп. поля                                       |
+| ------------------ | ----------------------------------------------------------------- | ----------------------------------------------- |
+| `AWInitError`      | `init()` не удался: хендшейк, конфиг, отклонённые скоупы, таймаут | `errorCode: InitErrorCodes`                     |
+| `AWSessionError`   | Сессия недействительна, истекла или отозвана                      | `errorCode: SessionErrorCodes`                  |
+| `AWScopeError`     | Нужный скоуп не выдан                                             | `errorCode: ScopeErrorCodes`                    |
+| `AWOperationError` | Операция не прошла или отклонена                                  | `operationId`, `errorCode: OperationErrorCodes` |
+| `AWTimeoutError`   | Ответа не было дольше `timeout`                                   | —                                               |
+
 
 ```typescript
 import {
@@ -395,8 +506,8 @@ if (!sdk.isCommandAvailable(AWCommand.GetScopesData)) {
 ```
 
 - `sdk.isCommandAvailable(command)` — сверяется с картой `supportedCommands`,
-  которую хост вернул при хендшейке. Если хост ничего не сообщил, считаем, что
-  доступно всё.
+которую хост вернул при хендшейке. Если хост ничего не сообщил, считаем, что
+доступно всё.
 - `COMMAND_VERSIONS` — минимальные версии команд, нужные этой сборке SDK.
 - `PROTOCOL_VERSION` — версия конверта postMessage (`'1.0'`).
 - `SDK_VERSION` — всегда равен версии пакета.
@@ -416,21 +527,21 @@ sdk.destroy();
 `0.4.0` приводит SDK к тому потоку, который реально используют кошелёк и примеры.
 
 - **Удалён `sdk.operations.prepare()`** вместе с `AWOperationIntent`,
-  `AWOperationIntentParams` и сообщениями протокола `PREPARE_OPERATION`.
-  Создавайте интент на бэкенде и передавайте `operationId` в
-  `sdk.operations.requestConfirmation()`.
-- **`AWOperationType` теперь `'pay' | 'receive' | 'scopes'`** (было
-  `'transfer' | 'payment'`).
+`AWOperationIntentParams` и сообщениями протокола `PREPARE_OPERATION`.
+Создавайте интент на бэкенде и передавайте `operationId` в
+`sdk.operations.requestConfirmation()`.
+- `**AWOperationType` теперь `'pay' | 'receive' | 'scopes'**` (было
+`'transfer' | 'payment'`).
 - **Изменены значения `AWScope`** на те, что кошелёк реально выдаёт:
-  `USER_DATA` (`'userData'`), `BALANCE` (`'balance'`)
-  и `PAY` (`'pay'`). Старые `user.profile.read` / `accounts.read` /
-  `accounts.balances.read` / `transfers.create` / `payments.create` удалены.
-  `receive` намеренно отсутствует — это тип интента, и он не требует
-  никакого скоупа.
+`USER_DATA` (`'userData'`), `BALANCE` (`'balance'`)
+и `PAY` (`'pay'`). Старые `user.profile.read` / `accounts.read` /
+`accounts.balances.read` / `transfers.create` / `payments.create` удалены.
+`receive` намеренно отсутствует — это тип интента, и он не требует
+никакого скоупа.
 - **Удалён `AWCommand.PrepareOperation`** из `AWCommand` и `COMMAND_VERSIONS`.
 - Прошлые README описывали событие `operation.succeeded`. Его никогда не было в
-  `AWSDKEventMap` — используйте значение, которое вернул
-  `requestConfirmation()`, а в проде вебхук AW.
+`AWSDKEventMap` — используйте значение, которое вернул
+`requestConfirmation()`, а в проде вебхук AW.
 
 ## Лицензия
 

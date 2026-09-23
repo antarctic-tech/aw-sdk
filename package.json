@@ -1,6 +1,6 @@
 {
   "name": "@antarctic-wallet/aw-sdk",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "SDK for embedded mini-apps in Antarctic Wallet",
   "keywords": [
     "antarctic-wallet",
