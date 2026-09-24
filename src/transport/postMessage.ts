@@ -2,11 +2,14 @@ import type { AWMessage } from '../types/protocol';
 import { isValidAWMessage, createMessage } from './serializer';
 import { PROTOCOL_VERSION } from '../types/protocol';
 import { generateRequestId } from '../utils/id';
-import { AWTimeoutError } from '../utils/errors';
+import { AWSDKError, AWTimeoutError } from '../utils/errors';
+import { InitErrorCodes } from '../types/errors';
 import { withRetry, type RetryConfig, DEFAULT_RETRY } from '../utils/retry';
 import type { Logger } from '../utils/logger';
 
-type MessageHandler = (message: AWMessage) => void;
+/** isReply — сообщение отвечает на запрос, который сейчас ждёт sendAndWait */
+export type MessageMeta = { isReply: boolean };
+type MessageHandler = (message: AWMessage, meta: MessageMeta) => void;
 
 declare global {
   interface Window {
@@ -24,6 +27,8 @@ export class PostMessageTransport {
   private appId: string;
   private logger: Logger;
   private handlers: Set<MessageHandler> = new Set();
+  // Ожидающие ответа запросы: таймер и reject, чтобы destroy() не оставлял висящих промисов
+  private pendingRequests: Map<string, { timer: ReturnType<typeof setTimeout>; reject: (error: Error) => void }> = new Map();
   private boundListener: ((event: MessageEvent) => void) | null = null;
 
   constructor(parentOrigin: string, appId: string, logger: Logger) {
@@ -78,6 +83,7 @@ export class PostMessageTransport {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.off(handler);
+        this.pendingRequests.delete(requestId);
         reject(new AWTimeoutError(requestId));
       }, timeout);
 
@@ -85,10 +91,12 @@ export class PostMessageTransport {
         if (message.requestId === requestId) {
           clearTimeout(timer);
           this.off(handler);
+          this.pendingRequests.delete(requestId);
           resolve(message as AWMessage<T>);
         }
       };
 
+      this.pendingRequests.set(requestId, { timer, reject });
       this.on(handler);
     });
   }
@@ -136,6 +144,13 @@ export class PostMessageTransport {
       this.boundListener = null;
     }
     this.handlers.clear();
+    // Ожидающие запросы отклоняем сразу: иначе промис (например, сканер с таймаутом 10 мин)
+    // и его таймер пережили бы SDK
+    for (const { timer, reject } of this.pendingRequests.values()) {
+      clearTimeout(timer);
+      reject(new AWSDKError(InitErrorCodes.GenericError, 'Transport destroyed'));
+    }
+    this.pendingRequests.clear();
     this.logger.log('Транспорт уничтожен');
   }
 
@@ -152,8 +167,10 @@ export class PostMessageTransport {
     const message = event.data;
     this.logger.log('Получено сообщение:', message.type, message.requestId);
 
+    // Снимок до обхода: обработчик ожидания снимает requestId из pending прямо в цикле
+    const meta: MessageMeta = { isReply: this.pendingRequests.has(message.requestId) };
     for (const handler of this.handlers) {
-      handler(message);
+      handler(message, meta);
     }
   }
 }

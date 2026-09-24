@@ -16,6 +16,9 @@ export class BackButtonModule {
   private transport: PostMessageTransport;
   private logger: Logger;
   private visible = false;
+  // До SDK_INIT сообщения копим: хост сбрасывает стрелку на SDK_INIT, и show() раньше него терялся бы
+  private ready = false;
+  private pendingSync = false;
   private clickHandlers = new Set<BackButtonClickHandler>();
 
   constructor(transport: PostMessageTransport, logger: Logger) {
@@ -76,6 +79,27 @@ export class BackButtonModule {
   }
 
   /**
+   * Открыть канал: SDK_INIT уже ушёл (или сессия восстановлена без него) — отправить
+   * накопленное состояние. До этого show()/hide() только запоминаются.
+   * @internal
+   */
+  activate(): void {
+    this.ready = true;
+    if (this.pendingSync) {
+      this.pendingSync = false;
+      this.sync();
+    }
+  }
+
+  /**
+   * Повторно отправить видимость: ретрай SDK_INIT снова сбрасывает стрелку на хосте
+   * @internal
+   */
+  resync(): void {
+    if (this.visible) this.sync();
+  }
+
+  /**
    * Сброс состояния при уничтожении SDK
    * Если кнопка была видима — шлёт hide на хост, пока транспорт ещё жив.
    * @internal
@@ -83,14 +107,21 @@ export class BackButtonModule {
   reset(): void {
     const wasVisible = this.visible;
     this.visible = false;
+    this.pendingSync = false;
     this.clickHandlers.clear();
 
     if (wasVisible) {
       this.sync();
     }
+    this.ready = false;
   }
 
   private sync(): void {
+    if (!this.ready) {
+      this.pendingSync = true;
+      return;
+    }
+
     this.logger.log('BackButton: is_visible =', this.visible);
     this.transport.post<SetupBackButtonPayload>(IframeToParentMessageType.WEB_APP_SETUP_BACK_BUTTON, {
       is_visible: this.visible,

@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.4.2](https://github.com/antarctic-tech/aw-sdk/compare/v0.4.1...v0.4.2) (2026-09-24)
+
+
+### Features
+
+* **FE-1640:** вибрация ([46f98b5](https://github.com/antarctic-tech/aw-sdk/commit/46f98b53932d7921614be7f543c884edc801de33))
+* **FE-1640:** окружение хоста и QR-сканер ([cf0602c](https://github.com/antarctic-tech/aw-sdk/commit/cf0602c613ab60431f55f20ef8332c9a132b27b1))
+* **FE-1640:** цвет фона ([a482f5f](https://github.com/antarctic-tech/aw-sdk/commit/a482f5ffdebba70530bc6bde7236495f7c81fb37))
+
+
+### Bug Fixes
+
+* **FE-1640:** destroy сбрасывает таймер, убрал возможность передать текст в сканер ([e93c154](https://github.com/antarctic-tech/aw-sdk/commit/e93c15410bdc61875b41ef606cca3aaf249aed11))
+* **FE-1640:** ERROR-ответ на запрос не эмитит sdk.error ([b421c14](https://github.com/antarctic-tech/aw-sdk/commit/b421c142f77ebf3e224d9884bc37cfb723a5ea9e))
+* **FE-1640:** фикс кнопки назад ([2499798](https://github.com/antarctic-tech/aw-sdk/commit/2499798470986c7779a845a79cc7f1d5dabfe69c))
+
 ### [0.4.1](https://github.com/antarctic-tech/aw-sdk/compare/v0.4.0...v0.4.1) (2026-09-23)
 
 ## [0.4.0](https://github.com/antarctic-tech/aw-sdk/compare/v0.3.4...v0.4.0) (2026-09-10)

@@ -8,6 +8,8 @@
 SDK for embedded mini-apps in Antarctic Wallet (AW). It handles the secure
 iframe-to-parent channel, the handshake, session and scope management, and
 asking the wallet to show its **native** confirmation sheet for an operation.
+It also reads the host environment (theme, language, safe area, visibility) and
+calls host features: the QR scanner, haptics, and the page background color.
 
 Zero runtime dependencies. Works in an iframe and in a React Native WebView.
 
@@ -119,8 +121,9 @@ function resolveParentOrigin(): string {
 }
 ```
 
-The wallet always passes `?parentOrigin=`. If you use a router, prefer a hash
-router (`#/pay`) so the query string survives navigation.
+The wallet always passes `?parentOrigin=` and the launch environment
+(`awPlatform`, `awColorScheme`, `awLanguageCode`). If you use a router, prefer a
+hash router (`#/pay`) so the query string survives navigation.
 
 ### Is the app running inside the wallet?
 
@@ -253,8 +256,9 @@ withdrawal — is in [Money flow](#money-flow).
 
 ## Money flow
 
-Balances are in USD inside Antarctic Wallet. Each mini-app has one account:
-its own balance, kept apart from the developer's personal balance.
+Each mini-app has one account: its own balance, kept apart from the developer's
+personal balance. The API returns that balance in different currencies. For now
+the response includes only USD.
 
 A `scopes` intent does not move funds.
 
@@ -338,6 +342,45 @@ sequenceDiagram
 The available amount is the app account balance minus user payments that are
 still cooling. Payouts and withdrawals both use only this amount.
 
+### App account balance
+
+Your backend reads the app account over the same server-to-server auth as
+intents: header `X-AW-App-Id` and `Authorization: Bearer <app_secret>`. The
+authenticated app is the account. The call does not use the user, a user login,
+or the `balance` scope — that scope is the user's own balance.
+
+```
+GET {AW_API_BASE}/api/apps/v1/balance
+```
+
+The response is an array, one element per currency. For now it contains a single
+element, USD. The next currency is another element of the same array; the
+response shape does not change.
+
+The account holds 100 USD, of which 30 are on hold and 70 are available:
+
+```json
+[
+  {
+    "asset": "USD",
+    "total": { "amount": 100, "scale": 0 },
+    "available": { "amount": 70, "scale": 0 },
+    "locked": { "amount": 30, "scale": 0 }
+  }
+]
+```
+
+| Field | Meaning |
+| --- | --- |
+| `asset` | Currency. Only `USD` for now |
+| `total` | App account balance in this currency |
+| `locked` | Amount on hold for this account |
+| `available` | `max(total − locked, 0)` |
+
+Amounts are `{ amount, scale }`: 100 whole units is `{ "amount": 100, "scale": 0 }`.
+`available` and `locked` are the same numbers as the available amount and the
+cooling hold above.
+
 ### App status
 
 | Status | Users can pay the app | App can pay users | Developer can top up | Developer can withdraw |
@@ -383,7 +426,150 @@ sdk.backButton.offClick(handler);
 ```
 
 On Android the hardware back button follows the same contract while the arrow is
-visible. `destroy()` hides the arrow and drops every handler.
+visible. `show()` and `hide()` before `init()` are remembered and sent once the
+channel is open (after the handshake, or after a restored session). A retried
+handshake resends the arrow if it should stay visible. `destroy()` hides the
+arrow and drops every handler.
+
+## Host Environment
+
+Theme, language, platform, safe area and visibility of the host container.
+Platform, theme and language are known before `init()`; safe area and visibility
+are filled in by the time `await sdk.init()` returns. Events fire on every change
+afterwards. An older wallet that sends no snapshot does not block `init()` and does
+not emit `sdk.error`: launch values stay as they were, safe area stays unset, and
+`isActive` stays `true`.
+
+### Launch query
+
+Read as soon as `new AWSDK()` returns, before any postMessage:
+
+```
+?awPlatform=ios&awColorScheme=dark&awLanguageCode=pt-BR
+```
+
+| Parameter | Property | Values |
+| --- | --- | --- |
+| `awPlatform` | `platform` | `web`, `tma`, `ios`, `android` |
+| `awColorScheme` | `colorScheme` | `light`, `dark` — a system setting is already resolved |
+| `awLanguageCode` | `languageCode` | BCP 47: `ru`, `en`, `kk`, `pt-BR`, … |
+
+Unknown values are ignored. Safe area and visibility are not in the URL. `isActive`
+starts as `true` and stays that way if the host never sends visibility. Keep these
+parameters across navigations the same way as `parentOrigin`.
+
+### Properties
+
+| Property | Event | Meaning |
+|---|---|---|
+| `platform` | — | `web`, `tma`, `ios`, `android` |
+| `colorScheme` | `themeChanged` | `light` / `dark`, system mode already resolved |
+| `languageCode` | `languageChanged` | wallet UI language, BCP 47: `ru`, `en`, `kk`, `pt-BR`, … |
+| `safeAreaInset` | `safeAreaChanged` | `{ top, right, bottom, left }` inside the container |
+| `isActive` | `activated`, `deactivated` | the app is on screen and the wallet is in the foreground |
+
+Properties are updated **before** handlers run, handlers take no arguments, and identical
+values do not fire events again. `sdk.refreshEnvironment()` asks again for theme, language
+and safe area only — visibility is push-only, and an older wallet ignores the requests.
+Normally you do not need it: the host sends a full snapshot before `init()` resolves, then
+only changes.
+
+### CSS variables
+
+The SDK sets them on `:root`:
+
+```css
+.footer { padding-bottom: var(--aw-safe-area-inset-bottom, 0px); }
+.header { padding-top: var(--aw-safe-area-inset-top, 0px); }
+```
+
+`--aw-safe-area-inset-top|right|bottom|left`, `--aw-color-scheme`. A variable is absent until its value arrives — always provide a fallback.
+
+### Example
+
+```typescript
+const sdk = new AWSDK({ appId: 'my-mini-app', scopes: [], parentOrigin: walletOrigin });
+
+const applyEnvironment = () => {
+  document.documentElement.dataset.theme = sdk.colorScheme ?? 'light';
+  i18n.locale = sdk.languageCode ?? 'en';
+};
+
+applyEnvironment();
+sdk.events.on('themeChanged', applyEnvironment);
+sdk.events.on('languageChanged', applyEnvironment);
+sdk.events.on('deactivated', () => pausePolling());
+sdk.events.on('activated', () => refreshAndResumePolling());
+
+await sdk.init();
+if (!sdk.isActive) pausePolling();
+```
+
+### Vue 3 refs
+
+`useAWSdk` returns readonly refs: `platform`, `isActive`, `colorScheme`, `languageCode`,
+`safeAreaInset`. They update reactively after mount:
+
+```typescript
+import { watch } from 'vue';
+import { useAWSdk } from '@antarctic-wallet/aw-sdk/vue';
+
+const { colorScheme, languageCode, isActive } = useAWSdk(config);
+watch(colorScheme, value => applyTheme(value ?? 'light'), { immediate: true });
+watch(languageCode, value => applyLanguage(value ?? 'en'), { immediate: true });
+watch(isActive, value => (value ? resume() : pause()));
+```
+
+## QR scanner
+
+Opens the wallet's own scanner over the app and resolves with the decoded string.
+The camera stays with the wallet: the app never sees the video, only the result.
+The scanner shows which app will receive the result and closes after the first scan.
+
+```typescript
+try {
+  const address = await sdk.scanQr();
+} catch (err) {
+  if (err instanceof AWScanQrError && err.errorCode === ScanQrErrorCodes.Closed) {
+    // the user closed the scanner
+  }
+}
+```
+
+`AWScanQrError.errorCode`: `closed`, `not_active` (the app is minimized or the wallet is in
+the background), `already_open`, `camera_denied`, `unsupported` (the host did not advertise
+the scanner — see `sdk.isCommandAvailable(AWCommand.OpenScanQr)`), `generic_error`.
+
+There is no caption argument: the wallet draws “the result goes to this app” itself.
+The `timeout` from the config does not apply. The call waits until a result, a close, or
+`destroy()`, which rejects a scan that is still open.
+
+## Haptic feedback
+
+Vibrates through the wallet, the same way native wallet controls do. Fire-and-forget:
+no reply, and nothing happens while the app is minimized or the user has turned
+vibration off in the wallet settings.
+
+```typescript
+sdk.hapticFeedback.impactOccurred('light');        // light | medium | heavy | rigid | soft
+sdk.hapticFeedback.notificationOccurred('success'); // success | warning | error
+sdk.hapticFeedback.selectionChanged();
+```
+
+## Background color
+
+Tell the wallet which color sits under your page. The wallet paints only the WebView /
+iframe area, so iOS overscroll no longer flashes the wallet tone. The header and the
+loader stay in the wallet's own color. Accepts `#rgb` or `#rrggbb`; a short form is
+expanded to lowercase `#rrggbb` and that is what `sdk.backgroundColor` returns. Anything
+else returns `false` and is not sent. No reply; older wallets ignore the call.
+
+```typescript
+sdk.setBackgroundColor('#0f1117');
+sdk.backgroundColor; // '#0f1117'
+```
+
+Call it again whenever your theme changes, e.g. on `themeChanged`.
 
 ## Events
 
@@ -392,12 +578,16 @@ Subscribe **before** `init()`.
 | Event | Payload | When |
 | ----- | ------- | ---- |
 | `sdk.ready` | `AWSession` | Handshake finished (or a stored session was restored) |
-| `sdk.error` | `{ code, message }` | Bad origin, host unreachable, `init` failed |
+| `sdk.error` | `{ code, message }` | Unsolicited host error: bad origin, host unreachable, `init` failed. An `ERROR` that answers a request rejects that call and does not emit `sdk.error` |
 | `scopes.granted` | `{ scopes }` | Emitted with the granted set on ready, and after a `scopes` operation |
 | `session.refreshed` | `{ sessionToken, idToken, expiresAt }` | Session rotated — take the fresh `idToken` |
 | `session.expired` | — | Session is dead; reset UI and `init()` again |
 | `operation.rejected` | `{ operationId, reason }` | The user tapped "reject" in the wallet |
 | `backButton` | — | The host's back arrow was pressed |
+| `themeChanged` | — | `sdk.colorScheme` changed |
+| `languageChanged` | — | `sdk.languageCode` changed |
+| `safeAreaChanged` | — | `sdk.safeAreaInset` changed |
+| `activated` / `deactivated` | — | The app went on / off screen (`sdk.isActive`) |
 
 ```typescript
 sdk.events.on('session.refreshed', ({ idToken }) => {
@@ -419,6 +609,7 @@ Every error extends `AWSDKError`. Match with `instanceof`, not on `message`.
 | `AWScopeError` | A required scope was not granted | `errorCode: ScopeErrorCodes` |
 | `AWOperationError` | Operation failed or was rejected | `operationId`, `errorCode: OperationErrorCodes` |
 | `AWTimeoutError` | No response within `timeout` | — |
+| `AWScanQrError` | QR scanner failed, was closed, or is unavailable | `errorCode: ScanQrErrorCodes` |
 
 ```typescript
 import {
@@ -453,7 +644,7 @@ try {
 ```
 
 The code enums (`InitErrorCodes`, `SessionErrorCodes`, `ScopeErrorCodes`,
-`OperationErrorCodes`) and their default English messages
+`OperationErrorCodes`, `ScanQrErrorCodes`) and their default English messages
 (`InitErrorMessage`, …) are exported too.
 
 ## Vue 3
@@ -476,6 +667,8 @@ const { sdk, session, user, isReady, error } = useAWSdk({
 
 It creates the SDK on mount, calls `init()`, and calls `destroy()` on unmount.
 `sdk` is a `shallowRef` — never put the SDK instance into deep reactive state.
+The same composable also returns the environment refs: `platform`, `colorScheme`,
+`languageCode`, `safeAreaInset`, `isActive`. See [Host environment](#host-environment).
 
 ## Host compatibility
 
@@ -498,8 +691,12 @@ if (!sdk.isCommandAvailable(AWCommand.GetScopesData)) {
 ```
 
 - `sdk.isCommandAvailable(command)` — checks the `supportedCommands` map the
-  host returned during the handshake. If the host reported nothing, everything
-  is assumed available.
+  host returned during the handshake. If the host reported nothing, required
+  commands are assumed available. Optional ones are not: `scanQr()` needs an
+  explicit `web_app_open_scan_qr` entry, otherwise it throws `unsupported`.
+  Theme, language and safe area count as available once a snapshot has arrived,
+  even if they are missing from the map. Haptics and background color are
+  fire-and-forget: an older wallet ignores them, and `init()` still succeeds.
 - `COMMAND_VERSIONS` — minimum command versions this SDK build requires.
 - `PROTOCOL_VERSION` — postMessage envelope version (`'1.0'`).
 - `SDK_VERSION` — always equal to the package version.
@@ -510,9 +707,11 @@ if (!sdk.isCommandAvailable(AWCommand.GetScopesData)) {
 sdk.destroy();
 ```
 
-Stops auto-refresh, tears down the postMessage transport, removes all listeners,
-hides the back arrow and clears the persisted session. Call it from
-`onUnmounted` / `useEffect` cleanup / `ngOnDestroy`.
+Stops auto-refresh, rejects in-flight requests and clears their timers (an open
+scanner does not keep waiting), tears down the postMessage transport, removes
+all listeners, hides the back arrow, drops the background color and the `--aw-*`
+CSS variables, and clears the persisted session. Call it from `onUnmounted` /
+`useEffect` cleanup / `ngOnDestroy`.
 
 ## Migrating from 0.3.x
 

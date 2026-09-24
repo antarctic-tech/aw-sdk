@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
-import { saveSession, loadSession, clearSession } from '../../src/utils/storage';
+import { saveSession, loadSession, loadSupportedCommands, clearSession } from '../../src/utils/storage';
 import type { AWSession } from '../../src/types/session';
 
 const APP_ID = 'test-app';
@@ -81,5 +81,17 @@ describe('storage', () => {
     it('не падает если сессии нет', () => {
       expect(() => clearSession(APP_ID)).not.toThrow();
     });
+  });
+
+  it('supportedCommands сохраняются вместе с сессией и переживают пересохранение без них', () => {
+    saveSession(APP_ID, makeSession(), undefined, { init: 1, web_app_open_scan_qr: 1 });
+    expect(loadSupportedCommands(APP_ID)).toEqual({ init: 1, web_app_open_scan_qr: 1 });
+    saveSession(APP_ID, makeSession({ sessionToken: 'tok-2' }));
+    expect(loadSession(APP_ID)?.sessionToken).toBe('tok-2');
+    expect(loadSupportedCommands(APP_ID)).toEqual({ init: 1, web_app_open_scan_qr: 1 });
+    saveSession(APP_ID, makeSession(), undefined, { init: 2 });
+    expect(loadSupportedCommands(APP_ID)).toEqual({ init: 2 });
+    clearSession(APP_ID);
+    expect(loadSupportedCommands(APP_ID)).toEqual({});
   });
 });

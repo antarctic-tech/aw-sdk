@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   AWCommand,
   COMMAND_VERSIONS,
+  OPTIONAL_COMMANDS,
   PROTOCOL_VERSION,
   validateSupportedCommands,
   isCommandAvailable,
@@ -42,6 +43,15 @@ describe('protocol', () => {
         supported[cmd] = 99;
       }
       expect(validateSupportedCommands(supported)).toBe(true);
+    });
+
+    it('команды окружения необязательны для старого кошелька', () => {
+      const supported = { ...COMMAND_VERSIONS };
+      for (const command of OPTIONAL_COMMANDS) {
+        delete (supported as Partial<Record<AWCommand, number>>)[command];
+      }
+      expect(validateSupportedCommands(supported)).toBe(true);
+      expect(isCommandAvailable(AWCommand.RequestTheme, supported)).toBe(false);
     });
 
     it('возвращает false если команда отсутствует в supported', () => {

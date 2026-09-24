@@ -1,19 +1,26 @@
 import {
-  ref,
-  shallowRef,
-  readonly,
   onMounted,
   onUnmounted,
-  type ShallowRef,
-  type Ref,
+  readonly,
+  ref,
+  shallowRef,
   type DeepReadonly,
+  type Ref,
+  type ShallowRef,
 } from 'vue';
 import { AWSDK } from '../sdk';
 import type { AWSDKConfig } from '../types/config';
+import type { AWColorScheme, AWInsets, AWPlatform } from '../types/environment';
 import type { AWSession } from '../types/session';
 import type { AWUserContext } from '../types/user';
+import { readLaunchEnvironment } from '../utils/environment';
 
 export interface UseAWSDKReturn {
+  platform: Readonly<Ref<AWPlatform | undefined>>;
+  isActive: Readonly<Ref<boolean>>;
+  colorScheme: Readonly<Ref<AWColorScheme | undefined>>;
+  languageCode: Readonly<Ref<string | undefined>>;
+  safeAreaInset: Readonly<Ref<AWInsets | undefined>>;
   /** Инстанс SDK (null до mount) */
   sdk: ShallowRef<AWSDK | null>;
   /** Текущая сессия (null до инициализации) */
@@ -45,6 +52,12 @@ export interface UseAWSDKReturn {
  * ```
  */
 export function useAWSdk(config: AWSDKConfig): UseAWSDKReturn {
+  const launch = readLaunchEnvironment();
+  const platform = ref(launch.platform);
+  const isActive = ref(launch.isActive);
+  const colorScheme = ref(launch.colorScheme);
+  const languageCode = ref(launch.languageCode);
+  const safeAreaInset = shallowRef<AWInsets>();
   const sdk = shallowRef<AWSDK | null>(null);
   const session = ref<AWSession | null>(null);
   const user = ref<AWUserContext | null>(null);
@@ -54,6 +67,20 @@ export function useAWSdk(config: AWSDKConfig): UseAWSDKReturn {
   onMounted(async () => {
     const instance = new AWSDK(config);
     sdk.value = instance;
+
+    const syncEnvironment = () => {
+      platform.value = instance.platform;
+      isActive.value = instance.isActive;
+      colorScheme.value = instance.colorScheme;
+      languageCode.value = instance.languageCode;
+      safeAreaInset.value = instance.safeAreaInset;
+    };
+    syncEnvironment();
+    instance.events.on('themeChanged', syncEnvironment);
+    instance.events.on('languageChanged', syncEnvironment);
+    instance.events.on('safeAreaChanged', syncEnvironment);
+    instance.events.on('activated', syncEnvironment);
+    instance.events.on('deactivated', syncEnvironment);
 
     try {
       const s = await instance.init();
@@ -90,6 +117,11 @@ export function useAWSdk(config: AWSDKConfig): UseAWSDKReturn {
   });
 
   return {
+    platform: readonly(platform),
+    isActive: readonly(isActive),
+    colorScheme: readonly(colorScheme),
+    languageCode: readonly(languageCode),
+    safeAreaInset: readonly(safeAreaInset),
     sdk,
     session: readonly(session),
     user: readonly(user),

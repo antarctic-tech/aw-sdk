@@ -73,6 +73,32 @@ export enum ScopeErrorCodes {
   GenericError = 'generic_error',
 }
 
+/**
+ * Коды ошибок QR-сканера хоста
+ */
+export enum ScanQrErrorCodes {
+  /** Хост не поддерживает сканер (старый кошелёк) */
+  Unsupported = 'unsupported',
+  /** Пользователь закрыл сканер, ничего не отсканировав */
+  Closed = 'closed',
+  /** Приложение не на экране — сканер открывает только активное приложение */
+  NotActive = 'not_active',
+  /** Сканер уже открыт */
+  AlreadyOpen = 'already_open',
+  /** Нет доступа к камере */
+  CameraDenied = 'camera_denied',
+  GenericError = 'generic_error',
+}
+
+export const ScanQrErrorMessage: Record<ScanQrErrorCodes, string> = {
+  [ScanQrErrorCodes.Unsupported]: 'The host does not support the QR scanner.',
+  [ScanQrErrorCodes.Closed]: 'The user closed the scanner.',
+  [ScanQrErrorCodes.NotActive]: 'The app must be on screen to open the scanner.',
+  [ScanQrErrorCodes.AlreadyOpen]: 'The scanner is already open.',
+  [ScanQrErrorCodes.CameraDenied]: 'Camera access was denied.',
+  [ScanQrErrorCodes.GenericError]: 'Something unexpected went wrong with the scanner.',
+};
+
 export const ScopeErrorMessage: Record<ScopeErrorCodes, string> = {
   [ScopeErrorCodes.Rejected]: 'User rejected the scope request.',
   [ScopeErrorCodes.InvalidScope]: 'One or more requested scopes are invalid.',

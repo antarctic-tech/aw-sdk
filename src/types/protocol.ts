@@ -21,6 +21,12 @@ export enum IframeToParentMessageType {
   GET_SCOPES = 'GET_SCOPES',
   GET_SCOPES_DATA = 'GET_SCOPES_DATA',
   WEB_APP_SETUP_BACK_BUTTON = 'web_app_setup_back_button',
+  WEB_APP_REQUEST_THEME = 'web_app_request_theme',
+  WEB_APP_REQUEST_LANGUAGE = 'web_app_request_language',
+  WEB_APP_REQUEST_SAFE_AREA = 'web_app_request_safe_area',
+  WEB_APP_OPEN_SCAN_QR = 'web_app_open_scan_qr',
+  WEB_APP_TRIGGER_HAPTIC_FEEDBACK = 'web_app_trigger_haptic_feedback',
+  WEB_APP_SET_BACKGROUND_COLOR = 'web_app_set_background_color',
 }
 
 /**
@@ -39,6 +45,12 @@ export enum ParentToIframeMessageType {
   SCOPES_DATA_RESULT = 'SCOPES_DATA_RESULT',
   SCOPES_FAIL = 'SCOPES_FAIL',
   BACK_BUTTON_PRESSED = 'back_button_pressed',
+  THEME_CHANGED = 'theme_changed',
+  LANGUAGE_CHANGED = 'language_changed',
+  SAFE_AREA_CHANGED = 'safe_area_changed',
+  VISIBILITY_CHANGED = 'visibility_changed',
+  QR_TEXT_RECEIVED = 'qr_text_received',
+  SCAN_QR_CLOSED = 'scan_qr_closed',
   ERROR = 'ERROR',
 }
 
@@ -61,6 +73,12 @@ export enum AWCommand {
   GetSessionStatus = 'get_session_status',
   GetScopes = 'get_scopes',
   GetScopesData = 'get_scopes_data',
+  RequestTheme = 'web_app_request_theme',
+  RequestLanguage = 'web_app_request_language',
+  RequestSafeArea = 'web_app_request_safe_area',
+  OpenScanQr = 'web_app_open_scan_qr',
+  TriggerHapticFeedback = 'web_app_trigger_haptic_feedback',
+  SetBackgroundColor = 'web_app_set_background_color',
 }
 
 /**
@@ -73,7 +91,32 @@ export const COMMAND_VERSIONS: Record<AWCommand, number> = {
   [AWCommand.GetSessionStatus]: 1,
   [AWCommand.GetScopes]: 1,
   [AWCommand.GetScopesData]: 1,
+  [AWCommand.RequestTheme]: 1,
+  [AWCommand.RequestLanguage]: 1,
+  [AWCommand.RequestSafeArea]: 1,
+  [AWCommand.OpenScanQr]: 1,
+  [AWCommand.TriggerHapticFeedback]: 1,
+  [AWCommand.SetBackgroundColor]: 1,
 };
+
+/**
+ * Команды окружения: хост их поддерживает, если прислал хоть один снимок *_changed
+ */
+export const ENVIRONMENT_COMMANDS: ReadonlySet<AWCommand> = new Set([
+  AWCommand.RequestTheme,
+  AWCommand.RequestLanguage,
+  AWCommand.RequestSafeArea,
+]);
+
+/**
+ * Необязательные команды: старый кошелёк их не знает, init не блокируется
+ */
+export const OPTIONAL_COMMANDS: ReadonlySet<AWCommand> = new Set([
+  ...ENVIRONMENT_COMMANDS,
+  AWCommand.OpenScanQr,
+  AWCommand.TriggerHapticFeedback,
+  AWCommand.SetBackgroundColor,
+]);
 
 /**
  * Проверяет, поддерживает ли хост все необходимые команды
@@ -84,6 +127,7 @@ export function validateSupportedCommands(
   if (!supported) return true; // если хост не отдаёт — считаем всё поддерживается
 
   for (const [command, requiredVersion] of Object.entries(COMMAND_VERSIONS)) {
+    if (OPTIONAL_COMMANDS.has(command as AWCommand)) continue;
     const hostVersion = supported[command] ?? 0;
     if (hostVersion < requiredVersion) return false;
   }
@@ -214,6 +258,51 @@ export interface ScopesDataResultPayload {
  */
 export interface SetupBackButtonPayload {
   is_visible: boolean;
+}
+
+/** Payload theme_changed */
+export interface ThemeChangedPayload {
+  color_scheme: 'light' | 'dark';
+}
+
+/** Payload language_changed */
+export interface LanguageChangedPayload {
+  language_code: string;
+}
+
+/** Payload safe_area_changed */
+export interface SafeAreaChangedPayload {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
+/** Payload visibility_changed */
+export interface VisibilityChangedPayload {
+  is_visible: boolean;
+}
+
+/** Payload web_app_open_scan_qr: пустой — подпись в сканере рисует кошелёк, приложению её не доверяем */
+export type OpenScanQrPayload = Record<string, never>;
+
+/** Payload qr_text_received: распознанная строка, сканер уже закрыт */
+export interface QrTextReceivedPayload {
+  data: string;
+}
+
+export type HapticImpactStyle = 'light' | 'medium' | 'heavy' | 'rigid' | 'soft';
+export type HapticNotificationType = 'error' | 'success' | 'warning';
+
+/** Payload web_app_trigger_haptic_feedback — как у Telegram, ответа нет */
+export type TriggerHapticFeedbackPayload =
+  | { type: 'impact'; impact_style: HapticImpactStyle }
+  | { type: 'notification'; notification_type: HapticNotificationType }
+  | { type: 'selection_change' };
+
+/** Payload web_app_set_background_color — #rrggbb, ответа нет */
+export interface SetBackgroundColorPayload {
+  color: string;
 }
 
 /**

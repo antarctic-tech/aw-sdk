@@ -11,4 +11,9 @@ export type AWSDKEventMap = {
   'session.expired': void;
   'operation.rejected': { operationId: string; reason: string };
   backButton: void;
+  themeChanged: void;
+  languageChanged: void;
+  safeAreaChanged: void;
+  activated: void;
+  deactivated: void;
 };

@@ -7,6 +7,8 @@ import {
   OperationErrorMessage,
   ScopeErrorCodes,
   ScopeErrorMessage,
+  ScanQrErrorCodes,
+  ScanQrErrorMessage,
 } from '../types/errors';
 
 /**
@@ -82,6 +84,19 @@ export class AWScopeError extends AWSDKError {
   constructor(code: ScopeErrorCodes, message?: string) {
     super(code, message ?? ScopeErrorMessage[code] ?? 'Scope error.');
     this.name = 'AWScopeError';
+    this.errorCode = code;
+  }
+}
+
+/**
+ * Ошибка QR-сканера хоста
+ */
+export class AWScanQrError extends AWSDKError {
+  public readonly errorCode: ScanQrErrorCodes;
+
+  constructor(code: ScanQrErrorCodes, message?: string) {
+    super(code, message ?? ScanQrErrorMessage[code]);
+    this.name = 'AWScanQrError';
     this.errorCode = code;
   }
 }

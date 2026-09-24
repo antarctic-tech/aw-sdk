@@ -1,6 +1,17 @@
 // Основной класс
 export { AWSDK } from './sdk';
 export { BackButtonModule } from './modules/backButton';
+export { HapticFeedbackModule } from './modules/hapticFeedback';
+export { BackgroundModule } from './modules/background';
+export type {
+  HapticImpactStyle,
+  HapticNotificationType,
+  TriggerHapticFeedbackPayload,
+  SetBackgroundColorPayload,
+} from './types/protocol';
+
+// Окружение хоста: тема, язык, платформа, safe-area, видимость
+export type { AWColorScheme, AWEnvironment, AWInsets, AWPlatform } from './types/environment';
 
 // Типы конфигурации
 export type { AWSDKConfig, AWRetryConfig } from './types/config';
@@ -31,6 +42,8 @@ export {
   PROTOCOL_VERSION,
   AWCommand,
   COMMAND_VERSIONS,
+  OPTIONAL_COMMANDS,
+  ENVIRONMENT_COMMANDS,
   validateSupportedCommands,
   isCommandAvailable,
 } from './types/protocol';
@@ -45,6 +58,8 @@ export {
   OperationErrorMessage,
   ScopeErrorCodes,
   ScopeErrorMessage,
+  ScanQrErrorCodes,
+  ScanQrErrorMessage,
 } from './types/errors';
 
 // Классы ошибок
@@ -55,6 +70,7 @@ export {
   AWSessionError,
   AWOperationError,
   AWScopeError,
+  AWScanQrError,
 } from './utils/errors';
 
 // Утилиты

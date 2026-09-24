@@ -7,7 +7,9 @@
 
 SDK для встроенных мини-приложений Antarctic Wallet (AW). Берёт на себя
 безопасный канал iframe ↔ кошелёк, хендшейк, сессию и скоупы, а также запрос
-**нативного** листа подтверждения операции в кошельке.
+**нативного** листа подтверждения операции в кошельке. Читает окружение хоста
+(тема, язык, safe area, видимость) и вызывает его возможности: QR-сканер,
+тактильный отклик и цвет фона страницы.
 
 Без рантайм-зависимостей. Работает в iframe и в React Native WebView.
 
@@ -121,8 +123,9 @@ function resolveParentOrigin(): string {
 }
 ```
 
-Кошелёк всегда передаёт `?parentOrigin=`. Если используете роутер — берите
-хеш-роутер (`#/pay`), чтобы query-строка пережила навигацию.
+Кошелёк всегда передаёт `?parentOrigin=` и параметры запуска
+(`awPlatform`, `awColorScheme`, `awLanguageCode`). Если используете роутер —
+берите хеш-роутер (`#/pay`), чтобы query-строка пережила навигацию.
 
 ### Запущены ли мы внутри кошелька
 
@@ -256,7 +259,7 @@ if (status === 'pending') {
 
 ## Движение средств
 
-Балансы в USD внутри Antarctic Wallet. У каждого мини-приложения один счёт: собственный баланс, отдельно от личного баланса разработчика.
+У каждого мини-приложения один счёт: собственный баланс, отдельно от личного баланса разработчика. По API этот баланс можно получить в разных валютах. Пока в ответе только USD.
 
 Интент `scopes` не приводит к движению средств.
 
@@ -340,6 +343,45 @@ sequenceDiagram
 Доступная сумма — это баланс счёта минус оплаты пользователя, которые ещё
 охлаждаются. И выплаты, и вывод берутся только из неё.
 
+### Баланс счёта приложения
+
+Бэкенд читает счёт приложения той же server-to-server авторизацией, что и
+интенты: заголовок `X-AW-App-Id` и `Authorization: Bearer <app_secret>`.
+Аутентифицированное приложение и есть этот счёт. В вызове не участвуют
+пользователь, его логин и scope `balance` — этот scope про баланс самого
+пользователя.
+
+```
+GET {AW_API_BASE}/api/apps/v1/balance
+```
+
+Ответ — массив, по элементу на валюту. Пока в нём один элемент, USD. Следующая
+валюта — ещё один элемент того же массива, форма ответа не меняется.
+
+Казна 100 USD, из них 30 в холде и 70 доступно:
+
+```json
+[
+  {
+    "asset": "USD",
+    "total": { "amount": 100, "scale": 0 },
+    "available": { "amount": 70, "scale": 0 },
+    "locked": { "amount": 30, "scale": 0 }
+  }
+]
+```
+
+| Поле | Смысл |
+| --- | --- |
+| `asset` | Валюта. Пока только `USD` |
+| `total` | Баланс счёта приложения в этой валюте |
+| `locked` | Сумма активного холда этого счёта |
+| `available` | `max(total − locked, 0)` |
+
+Суммы в виде `{ amount, scale }`: 100 целых — `{ "amount": 100, "scale": 0 }`.
+`available` и `locked` — те же числа, что доступная сумма и холд на охлаждении
+выше.
+
 ### Статус приложения
 
 
@@ -387,23 +429,166 @@ sdk.backButton.offClick(handler);
 ```
 
 На Android аппаратная кнопка «Назад» работает по тому же контракту, пока
-стрелка видима. `destroy()` прячет стрелку и снимает все хендлеры.
+стрелка видима. `show()` и `hide()` до `init()` запоминаются и уходят, когда
+канал открыт (после хендшейка или после восстановленной сессии). Повторный
+хендшейк снова отправляет стрелку, если она должна остаться видимой.
+`destroy()` прячет стрелку и снимает все хендлеры.
+
+## Окружение хоста
+
+Тема, язык, платформа, safe-area и видимость контейнера приложения.
+Платформа, тема и язык известны до `init()`; safe area и видимость заполнены к
+моменту, когда `await sdk.init()` вернулся. Дальше события приходят при каждом
+изменении. Старый кошелёк, который не присылает снимок, `init()` не блокирует и
+`sdk.error` не эмитит: значения из URL остаются как были, safe area не заполняется,
+`isActive` остаётся `true`.
+
+### Параметры запуска
+
+Читаются сразу после `new AWSDK()`, до любого postMessage:
+
+```
+?awPlatform=ios&awColorScheme=dark&awLanguageCode=pt-BR
+```
+
+| Параметр | Свойство | Значения |
+| --- | --- | --- |
+| `awPlatform` | `platform` | `web`, `tma`, `ios`, `android` |
+| `awColorScheme` | `colorScheme` | `light`, `dark` — системная настройка уже применена |
+| `awLanguageCode` | `languageCode` | BCP 47: `ru`, `en`, `kk`, `pt-BR`, … |
+
+Неизвестные значения игнорируются. В URL нет safe area и видимости. `isActive`
+стартует как `true` и таким и остаётся, если хост видимость не присылает. Эти
+параметры нужно сохранять при навигации так же, как `parentOrigin`.
+
+### Свойства
+
+| Свойство | Событие | Что означает |
+|---|---|---|
+| `platform` | — | `web`, `tma`, `ios`, `android` |
+| `colorScheme` | `themeChanged` | `light` / `dark`, системный режим уже применён |
+| `languageCode` | `languageChanged` | язык интерфейса кошелька, BCP 47: `ru`, `en`, `kk`, `pt-BR`, … |
+| `safeAreaInset` | `safeAreaChanged` | `{ top, right, bottom, left }` внутри контейнера |
+| `isActive` | `activated`, `deactivated` | приложение на экране и кошелёк на переднем плане |
+
+Свойства обновляются **до** вызова обработчиков, обработчики без аргументов, одинаковые
+значения событий не вызывают. `sdk.refreshEnvironment()` повторно запрашивает только тему,
+язык и safe area: видимость приходит только пушем, старый кошелёк запросы игнорирует.
+Обычно вызов не нужен: хост шлёт полный снимок до резолва `init()`, дальше — только изменения.
+
+### CSS-переменные
+
+SDK выставляет их на `:root`:
+
+```css
+.footer { padding-bottom: var(--aw-safe-area-inset-bottom, 0px); }
+.header { padding-top: var(--aw-safe-area-inset-top, 0px); }
+```
+
+`--aw-safe-area-inset-top|right|bottom|left`, `--aw-color-scheme`. Пока значение не пришло, переменной нет — задавайте fallback.
+
+### Пример
+
+```typescript
+const sdk = new AWSDK({ appId: 'my-mini-app', scopes: [], parentOrigin: walletOrigin });
+
+const applyEnvironment = () => {
+  document.documentElement.dataset.theme = sdk.colorScheme ?? 'light';
+  i18n.locale = sdk.languageCode ?? 'en';
+};
+
+applyEnvironment();
+sdk.events.on('themeChanged', applyEnvironment);
+sdk.events.on('languageChanged', applyEnvironment);
+sdk.events.on('deactivated', () => pausePolling());
+sdk.events.on('activated', () => refreshAndResumePolling());
+
+await sdk.init();
+if (!sdk.isActive) pausePolling();
+```
+
+### Vue 3 refs
+
+`useAWSdk` возвращает readonly refs: `platform`, `isActive`, `colorScheme`, `languageCode`,
+`safeAreaInset`. После mount они обновляются реактивно:
+
+```typescript
+import { watch } from 'vue';
+import { useAWSdk } from '@antarctic-wallet/aw-sdk/vue';
+
+const { colorScheme, languageCode, isActive } = useAWSdk(config);
+watch(colorScheme, value => applyTheme(value ?? 'light'), { immediate: true });
+watch(languageCode, value => applyLanguage(value ?? 'en'), { immediate: true });
+watch(isActive, value => (value ? resume() : pause()));
+```
+
+## QR-сканер
+
+Открывает сканер кошелька поверх приложения и возвращает распознанную строку.
+Камера остаётся у кошелька: приложение не видит видео, только результат.
+Сканер показывает, какое приложение получит результат, и закрывается после первого скана.
+
+```typescript
+try {
+  const address = await sdk.scanQr();
+} catch (err) {
+  if (err instanceof AWScanQrError && err.errorCode === ScanQrErrorCodes.Closed) {
+    // пользователь закрыл сканер
+  }
+}
+```
+
+`AWScanQrError.errorCode`: `closed`, `not_active` (приложение свёрнуто или кошелёк в фоне),
+`already_open`, `camera_denied`, `unsupported` (хост не заявил сканер — см.
+`sdk.isCommandAvailable(AWCommand.OpenScanQr)`), `generic_error`.
+
+Аргумента с подписью нет: кошелёк сам рисует «результат получит это приложение».
+`timeout` из конфига на сканер не действует. Вызов ждёт результат, закрытие или
+`destroy()`, который отклоняет ещё открытый скан.
+
+## Тактильный отклик
+
+Вибрация через кошелёк, как у его собственных контролов. Без ответа; пока приложение
+свёрнуто или вибрация выключена в настройках кошелька, ничего не происходит.
+
+```typescript
+sdk.hapticFeedback.impactOccurred('light');        // light | medium | heavy | rigid | soft
+sdk.hapticFeedback.notificationOccurred('success'); // success | warning | error
+sdk.hapticFeedback.selectionChanged();
+```
+
+## Цвет фона
+
+Сообщите кошельку, какой цвет лежит под вашей страницей. Кошелёк красит только область
+WebView / iframe, и оверскролл на iOS больше не мигает его тоном. Шапка и лоадер остаются
+в цвете кошелька. Принимает `#rgb` или `#rrggbb`; короткая форма раскрывается в `#rrggbb`
+в нижнем регистре — его и возвращает `sdk.backgroundColor`. Всё остальное даёт `false` и
+не отправляется. Без ответа; старые кошельки вызов игнорируют.
+
+```typescript
+sdk.setBackgroundColor('#0f1117');
+sdk.backgroundColor; // '#0f1117'
+```
+
+Вызывайте повторно при смене темы, например по `themeChanged`.
 
 ## События
 
 Подписывайтесь **до** `init()`.
 
-
-| Событие              | Payload                                | Когда                                                        |
-| -------------------- | -------------------------------------- | ------------------------------------------------------------ |
-| `sdk.ready`          | `AWSession`                            | Хендшейк прошёл (или восстановлена сохранённая сессия)       |
-| `sdk.error`          | `{ code, message }`                    | Плохой origin, хост недоступен, `init` не удался             |
-| `scopes.granted`     | `{ scopes }`                           | Летит с выданным набором при ready и после операции `scopes` |
-| `session.refreshed`  | `{ sessionToken, idToken, expiresAt }` | Сессия обновилась — возьмите свежий `idToken`                |
-| `session.expired`    | —                                      | Сессия мертва: сбросьте UI и вызовите `init()` заново        |
-| `operation.rejected` | `{ operationId, reason }`              | В кошельке нажали «отклонить»                                |
-| `backButton`         | —                                      | Нажата стрелка «Назад» в шапке хоста                         |
-
+| Событие | Payload | Когда |
+| ------- | ------- | ----- |
+| `sdk.ready` | `AWSession` | Хендшейк прошёл (или восстановлена сохранённая сессия) |
+| `sdk.error` | `{ code, message }` | Незапрошенная ошибка хоста: плохой origin, хост недоступен, `init` не удался. `ERROR` в ответ на запрос отклоняет этот вызов и `sdk.error` не эмитит |
+| `scopes.granted` | `{ scopes }` | Летит с выданным набором при ready и после операции `scopes` |
+| `session.refreshed` | `{ sessionToken, idToken, expiresAt }` | Сессия обновилась — возьмите свежий `idToken` |
+| `session.expired` | — | Сессия мертва: сбросьте UI и вызовите `init()` заново |
+| `operation.rejected` | `{ operationId, reason }` | В кошельке нажали «отклонить» |
+| `backButton` | — | Нажата стрелка «Назад» в шапке хоста |
+| `themeChanged` | — | Изменился `sdk.colorScheme` |
+| `languageChanged` | — | Изменился `sdk.languageCode` |
+| `safeAreaChanged` | — | Изменился `sdk.safeAreaInset` |
+| `activated` / `deactivated` | — | Приложение появилось на экране / ушло с него (`sdk.isActive`) |
 
 ```typescript
 sdk.events.on('session.refreshed', ({ idToken }) => {
@@ -426,6 +611,7 @@ sdk.events.on('session.expired', () => {
 | `AWScopeError`     | Нужный скоуп не выдан                                             | `errorCode: ScopeErrorCodes`                    |
 | `AWOperationError` | Операция не прошла или отклонена                                  | `operationId`, `errorCode: OperationErrorCodes` |
 | `AWTimeoutError`   | Ответа не было дольше `timeout`                                   | —                                               |
+| `AWScanQrError`    | QR-сканер не открылся, закрыт или недоступен                      | `errorCode: ScanQrErrorCodes`                   |
 
 
 ```typescript
@@ -461,8 +647,8 @@ try {
 ```
 
 Enum'ы кодов (`InitErrorCodes`, `SessionErrorCodes`, `ScopeErrorCodes`,
-`OperationErrorCodes`) и их дефолтные сообщения (`InitErrorMessage`, …) тоже
-экспортируются.
+`OperationErrorCodes`, `ScanQrErrorCodes`) и их дефолтные сообщения
+(`InitErrorMessage`, …) тоже экспортируются.
 
 ## Vue 3
 
@@ -484,6 +670,8 @@ const { sdk, session, user, isReady, error } = useAWSdk({
 
 Composable создаёт SDK при mount, вызывает `init()` и `destroy()` при unmount.
 `sdk` — это `shallowRef`: инстанс SDK никогда не кладите в глубокую реактивность.
+Тот же composable возвращает refs окружения: `platform`, `colorScheme`,
+`languageCode`, `safeAreaInset`, `isActive`. См. [Окружение хоста](#окружение-хоста).
 
 ## Совместимость с хостом
 
@@ -506,8 +694,12 @@ if (!sdk.isCommandAvailable(AWCommand.GetScopesData)) {
 ```
 
 - `sdk.isCommandAvailable(command)` — сверяется с картой `supportedCommands`,
-которую хост вернул при хендшейке. Если хост ничего не сообщил, считаем, что
-доступно всё.
+которую хост вернул при хендшейке. Если хост ничего не сообщил, обязательные
+команды считаются доступными. Необязательные — нет: `scanQr()` ждёт явной
+записи `web_app_open_scan_qr`, иначе бросает `unsupported`. Тема, язык и
+safe area становятся доступны, как только пришёл снимок, даже если их нет в
+карте. Тактильный отклик и цвет фона — без ответа: старый кошелёк их
+игнорирует, и `init()` всё равно завершается.
 - `COMMAND_VERSIONS` — минимальные версии команд, нужные этой сборке SDK.
 - `PROTOCOL_VERSION` — версия конверта postMessage (`'1.0'`).
 - `SDK_VERSION` — всегда равен версии пакета.
@@ -518,9 +710,11 @@ if (!sdk.isCommandAvailable(AWCommand.GetScopesData)) {
 sdk.destroy();
 ```
 
-Останавливает авто-рефреш, гасит транспорт postMessage, снимает всех
-слушателей, прячет стрелку «Назад» и стирает сохранённую сессию. Вызывайте из
-`onUnmounted` / cleanup в `useEffect` / `ngOnDestroy`.
+Останавливает авто-рефреш, отклоняет незавершённые запросы и снимает их таймеры
+(открытый сканер не продолжает ждать), гасит транспорт postMessage, снимает всех
+слушателей, прячет стрелку «Назад», сбрасывает цвет фона и CSS-переменные `--aw-*`
+и стирает сохранённую сессию. Вызывайте из `onUnmounted` / cleanup в `useEffect` /
+`ngOnDestroy`.
 
 ## Миграция с 0.3.x
 
