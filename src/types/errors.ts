@@ -99,6 +99,47 @@ export const ScanQrErrorMessage: Record<ScanQrErrorCodes, string> = {
   [ScanQrErrorCodes.GenericError]: 'Something unexpected went wrong with the scanner.',
 };
 
+/**
+ * Коды ошибок открытия другой мини-апки
+ */
+export enum OpenAppErrorCodes {
+  /** Апки нет в реестре */
+  NotFound = 'not_found',
+  /** Апка заблокирована */
+  Blocked = 'blocked',
+  /** Апка приостановлена */
+  Suspended = 'suspended',
+  /** Стек контейнеров уже глубиной 5 */
+  StackLimit = 'stack_limit',
+  /** Чаще одного вызова в 500 мс или больше 10 успешных переходов в минуту */
+  RateLimited = 'rate_limited',
+  /** appId не строка или пустой после trim — на хост не уходит */
+  InvalidAppId = 'invalid_app_id',
+  /** Вызов со своим appId — на хост не уходит */
+  SameApp = 'same_app',
+  /** startParam не из алфавита или длиннее 512 — на хост не уходит */
+  InvalidStartParam = 'invalid_start_param',
+  /** fullscreen передан и это не boolean — на хост не уходит */
+  InvalidFullscreen = 'invalid_fullscreen',
+  /** Хост не заявил open_app */
+  Unsupported = 'unsupported',
+  GenericError = 'generic_error',
+}
+
+export const OpenAppErrorMessage: Record<OpenAppErrorCodes, string> = {
+  [OpenAppErrorCodes.NotFound]: 'The app was not found.',
+  [OpenAppErrorCodes.Blocked]: 'The app is blocked.',
+  [OpenAppErrorCodes.Suspended]: 'The app is suspended.',
+  [OpenAppErrorCodes.StackLimit]: 'The app stack is full.',
+  [OpenAppErrorCodes.RateLimited]: 'Too many app opens. Try again later.',
+  [OpenAppErrorCodes.InvalidAppId]: 'appId must be a non-empty string after trimming.',
+  [OpenAppErrorCodes.SameApp]: 'Cannot open the current app.',
+  [OpenAppErrorCodes.InvalidStartParam]: 'startParam must be 1–512 characters from A-Za-z0-9_-.',
+  [OpenAppErrorCodes.InvalidFullscreen]: 'fullscreen must be a boolean.',
+  [OpenAppErrorCodes.Unsupported]: 'The host does not support opening another app.',
+  [OpenAppErrorCodes.GenericError]: 'Something unexpected went wrong while opening the app.',
+};
+
 export const ScopeErrorMessage: Record<ScopeErrorCodes, string> = {
   [ScopeErrorCodes.Rejected]: 'User rejected the scope request.',
   [ScopeErrorCodes.InvalidScope]: 'One or more requested scopes are invalid.',

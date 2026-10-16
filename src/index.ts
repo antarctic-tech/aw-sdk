@@ -8,6 +8,8 @@ export type {
   HapticNotificationType,
   TriggerHapticFeedbackPayload,
   SetBackgroundColorPayload,
+  OpenAppParams,
+  OpenAppPayload,
 } from './types/protocol';
 
 // Окружение хоста: тема, язык, платформа, safe-area, видимость
@@ -60,6 +62,8 @@ export {
   ScopeErrorMessage,
   ScanQrErrorCodes,
   ScanQrErrorMessage,
+  OpenAppErrorCodes,
+  OpenAppErrorMessage,
 } from './types/errors';
 
 // Классы ошибок
@@ -71,6 +75,7 @@ export {
   AWOperationError,
   AWScopeError,
   AWScanQrError,
+  AWOpenAppError,
 } from './utils/errors';
 
 // Утилиты

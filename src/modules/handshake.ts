@@ -11,15 +11,18 @@ import { InitErrorCodes } from '../types/errors';
 import { SDK_VERSION } from '../utils/version';
 import { AWInitError } from '../utils/errors';
 import { userContextFromIdToken } from '../utils/userContext';
+import { parseStartParam } from '../utils/startParam';
 import type { RetryConfig } from '../utils/retry';
 import type { Logger } from '../utils/logger';
 
 /**
- * Результат хэндшейка — сессия + supportedCommands
+ * Результат хэндшейка — сессия, supportedCommands и start_param этого открытия.
+ * startParam не входит в сессию.
  */
 export interface HandshakeResult {
   session: AWSession;
   supportedCommands?: Record<string, number>;
+  startParam: string | null;
 }
 
 /**
@@ -61,6 +64,7 @@ export async function performHandshake(
         expiresAt: ok.expiresAt,
       },
       supportedCommands: ok.supportedCommands,
+      startParam: parseStartParam(ok.start_param),
     };
   }
 

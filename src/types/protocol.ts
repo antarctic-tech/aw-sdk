@@ -27,6 +27,7 @@ export enum IframeToParentMessageType {
   WEB_APP_OPEN_SCAN_QR = 'web_app_open_scan_qr',
   WEB_APP_TRIGGER_HAPTIC_FEEDBACK = 'web_app_trigger_haptic_feedback',
   WEB_APP_SET_BACKGROUND_COLOR = 'web_app_set_background_color',
+  OPEN_APP = 'OPEN_APP',
 }
 
 /**
@@ -51,6 +52,7 @@ export enum ParentToIframeMessageType {
   VISIBILITY_CHANGED = 'visibility_changed',
   QR_TEXT_RECEIVED = 'qr_text_received',
   SCAN_QR_CLOSED = 'scan_qr_closed',
+  OPEN_APP_OK = 'OPEN_APP_OK',
   ERROR = 'ERROR',
 }
 
@@ -79,6 +81,7 @@ export enum AWCommand {
   OpenScanQr = 'web_app_open_scan_qr',
   TriggerHapticFeedback = 'web_app_trigger_haptic_feedback',
   SetBackgroundColor = 'web_app_set_background_color',
+  OpenApp = 'open_app',
 }
 
 /**
@@ -97,6 +100,7 @@ export const COMMAND_VERSIONS: Record<AWCommand, number> = {
   [AWCommand.OpenScanQr]: 1,
   [AWCommand.TriggerHapticFeedback]: 1,
   [AWCommand.SetBackgroundColor]: 1,
+  [AWCommand.OpenApp]: 1,
 };
 
 /**
@@ -116,6 +120,7 @@ export const OPTIONAL_COMMANDS: ReadonlySet<AWCommand> = new Set([
   AWCommand.OpenScanQr,
   AWCommand.TriggerHapticFeedback,
   AWCommand.SetBackgroundColor,
+  AWCommand.OpenApp,
 ]);
 
 /**
@@ -175,6 +180,12 @@ export interface SdkInitOkPayload {
   expiresAt: number;
   /** Поддерживаемые команды хоста с версиями */
   supportedCommands?: Record<string, number>;
+  /**
+   * Стартовый параметр этого открытия.
+   * Хост уже проверил строку. Нет поля, null или пустая строка — параметра нет.
+   * Не часть сессии и не launch-env.
+   */
+  start_param?: string | null;
 }
 
 /**
@@ -237,6 +248,11 @@ export interface SessionStatusPayload {
   idToken?: string | null;
   grantedScopes: string[];
   expiresAt: number;
+  /**
+   * Стартовый параметр этого открытия. То же поле start_param, что в SDK_INIT_OK:
+   * при восстановлении сессии хендшейка нет, и параметр приходит здесь.
+   */
+  start_param?: string | null;
 }
 
 /**
@@ -303,6 +319,20 @@ export type TriggerHapticFeedbackPayload =
 /** Payload web_app_set_background_color — #rrggbb, ответа нет */
 export interface SetBackgroundColorPayload {
   color: string;
+}
+
+/** Аргументы sdk.openApp. Пустой startParam на хост не уходит. */
+export interface OpenAppParams {
+  appId: string;
+  startParam?: string | null;
+  fullscreen?: boolean;
+}
+
+/** Payload OPEN_APP. startParam есть только когда задан. */
+export interface OpenAppPayload {
+  appId: string;
+  startParam?: string;
+  fullscreen?: boolean;
 }
 
 /**

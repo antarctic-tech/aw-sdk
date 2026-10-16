@@ -4,6 +4,7 @@ import { BackgroundModule } from './modules/background';
 import { EnvironmentModule } from './modules/environment';
 import { performHandshake } from './modules/handshake';
 import { HapticFeedbackModule } from './modules/hapticFeedback';
+import { OpenAppModule } from './modules/openApp';
 import { OperationsModule } from './modules/operations';
 import { ScanQrModule } from './modules/scanQr';
 import { ScopesModule } from './modules/scopes';
@@ -21,6 +22,7 @@ import {
   ParentToIframeMessageType,
   type AWMessage,
   type ErrorPayload,
+  type OpenAppParams,
 } from './types/protocol';
 import type { AWSession, AWSessionStatusResponse } from './types/session';
 import type { AWUserContext } from './types/user';
@@ -43,6 +45,8 @@ export class AWSDK {
   private retryConfig: RetryConfig;
   private sessionToken: string | null = null;
   private session: AWSession | null = null;
+  private startParamValue: string | null = null;
+  private startParamCaptured = false;
   private initialized = false;
   private supportedCommands: Record<string, number> = {};
   private persistEnabled: boolean;
@@ -56,6 +60,7 @@ export class AWSDK {
   private sessionModule: SessionModule;
   private environmentModule: EnvironmentModule;
   private scanQrModule: ScanQrModule;
+  private openAppModule: OpenAppModule;
   private backgroundModule: BackgroundModule;
 
   constructor(config: AWSDKConfig) {
@@ -84,6 +89,13 @@ export class AWSDK {
     this.hapticFeedback = new HapticFeedbackModule(this.transport, this.logger);
     this.environmentModule = new EnvironmentModule(this.transport, this.events, config.appId);
     this.scanQrModule = new ScanQrModule(this.transport, this.logger, () => this.isCommandAvailable(AWCommand.OpenScanQr));
+    this.openAppModule = new OpenAppModule(
+      this.transport,
+      timeout,
+      this.logger,
+      config.appId,
+      () => this.isCommandAvailable(AWCommand.OpenApp),
+    );
     this.backgroundModule = new BackgroundModule(this.transport, this.logger);
   }
 
@@ -116,6 +128,20 @@ export class AWSDK {
    */
   get user(): AWUserContext | null {
     return this.session?.userContext ?? null;
+  }
+
+  // ============================================================================
+  // Start parameter
+  // ============================================================================
+
+  /**
+   * Стартовый параметр этого открытия (start_param).
+   * null до первого успешного init(), если хост его не передал, или если значение пустое / невалидное.
+   * Повторный init() и refreshSession() его не меняют. destroy() сбрасывает.
+   * Не читается из URL и не входит в launch-env и сессию.
+   */
+  get startParam(): string | null {
+    return this.startParamValue;
   }
 
   // ============================================================================
@@ -188,6 +214,18 @@ export class AWSDK {
   }
 
   /**
+   * Открыть зарегистрированную мини-апку внутри кошелька.
+   * startParam — до 512 символов из A-Za-z0-9_-; пустая строка, null и отсутствие не отправляются.
+   * appId обрезается по краям до проверки; пустая после trim строка — invalid_app_id.
+   * Свой appId запрещён и на хост не уходит.
+   * Отклоняется AWOpenAppError: not_found, blocked, suspended, stack_limit, rate_limited,
+   * invalid_app_id, same_app, invalid_start_param, unsupported (старый кошелёк).
+   */
+  openApp(params: OpenAppParams): Promise<void> {
+    return this.openAppModule.open(params);
+  }
+
+  /**
    * Подписанный OIDC id_token текущей сессии (доступен после init).
    * Форвардь его на свой бэкенд: тот проверит подпись через JWKS хоста и достанет
    * доверенный user_id из sub. Для авторизации используй ТОЛЬКО его, не userContext.
@@ -242,6 +280,13 @@ export class AWSDK {
     return this.performFullInit();
   }
 
+  /** Первый успешный init фиксирует параметр до destroy(). */
+  private acceptStartParam(value: string | null): void {
+    if (this.startParamCaptured) return;
+    this.startParamCaptured = true;
+    this.startParamValue = value;
+  }
+
   /**
    * Попытка восстановить сессию из sessionStorage.
    * Если сессия есть и валидна — возвращает AWSession, иначе null.
@@ -261,7 +306,7 @@ export class AWSDK {
 
         const idToken = status.idToken ?? stored.idToken ?? null;
         this.session = {
-          ...stored,
+          sessionToken: stored.sessionToken,
           idToken,
           grantedScopes: status.grantedScopes,
           expiresAt: status.expiresAt,
@@ -269,6 +314,7 @@ export class AWSDK {
         };
         this.sessionToken = stored.sessionToken;
         this.supportedCommands = loadSupportedCommands(this.config.appId);
+        this.acceptStartParam(status.startParam);
         this.initialized = true;
         // Без SDK_INIT хост стрелку не сбрасывает — просто открываем канал
         this.backButton.activate();
@@ -309,6 +355,7 @@ export class AWSDK {
       this.session = result.session;
       this.sessionToken = result.session.sessionToken;
       this.supportedCommands = result.supportedCommands ?? {};
+      this.acceptStartParam(result.startParam);
       this.initialized = true;
       this.backButton.resync();
 
@@ -391,7 +438,8 @@ export class AWSDK {
    * Получить статус сессии с бэкенда
    */
   async status(): Promise<AWSessionStatusResponse> {
-    return this.sessionModule.getStatus();
+    const { status, idToken, grantedScopes, expiresAt } = await this.sessionModule.getStatus();
+    return { status, idToken, grantedScopes, expiresAt };
   }
 
   /**
@@ -443,6 +491,8 @@ export class AWSDK {
     this.initialized = false;
     this.session = null;
     this.sessionToken = null;
+    this.startParamValue = null;
+    this.startParamCaptured = false;
     this.supportedCommands = {};
 
     if (this.persistEnabled) {

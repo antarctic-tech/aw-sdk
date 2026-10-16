@@ -10,6 +10,7 @@ import {
 } from '../types/protocol';
 import { SessionErrorCodes } from '../types/errors';
 import { AWSessionError } from '../utils/errors';
+import { parseStartParam } from '../utils/startParam';
 import type { RetryConfig } from '../utils/retry';
 import type { Logger } from '../utils/logger';
 
@@ -66,7 +67,7 @@ export class SessionModule {
   /**
    * Получить статус сессии через родителя
    */
-  async getStatus(): Promise<AWSessionStatusResponse> {
+  async getStatus(): Promise<AWSessionStatusResponse & { startParam: string | null }> {
     this.logger.log('Запрос статуса сессии...');
 
     const response = await this.transport.sendAndWait<
@@ -75,7 +76,9 @@ export class SessionModule {
     >(IframeToParentMessageType.GET_SESSION_STATUS, {}, this.timeout, this.retry);
 
     if (response.type === ParentToIframeMessageType.SESSION_STATUS) {
-      return response.payload as AWSessionStatusResponse;
+      const payload = response.payload as SessionStatusPayload;
+      const { start_param: rawStartParam, ...status } = payload;
+      return { ...(status as AWSessionStatusResponse), startParam: parseStartParam(rawStartParam) };
     }
 
     if (response.type === ParentToIframeMessageType.SESSION_STATUS_FAIL) {

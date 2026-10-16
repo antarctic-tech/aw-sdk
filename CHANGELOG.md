@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.4.3](https://github.com/antarctic-tech/aw-sdk/compare/v0.4.2...v0.4.3) (2026-10-16)
+
+
+### Features
+
+* **aw-2084:** reading start_param ([6277bbe](https://github.com/antarctic-tech/aw-sdk/commit/6277bbe20f590311d48fdaf4bad7629dd6cef516))
+* **aw-2108:** add openApp ([18a3c2e](https://github.com/antarctic-tech/aw-sdk/commit/18a3c2eb88e59bfeee66750c3b384a1bb8244a8e))
+* **aw-2108:** удалена инфа из доки по fullscreen ([e7b8bee](https://github.com/antarctic-tech/aw-sdk/commit/e7b8beed8a6cfe29c3c1a770fb05f90179da0d8e))
+
 ### [0.4.2](https://github.com/antarctic-tech/aw-sdk/compare/v0.4.1...v0.4.2) (2026-09-24)
 
 

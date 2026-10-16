@@ -27,6 +27,8 @@ export interface UseAWSDKReturn {
   session: DeepReadonly<Ref<AWSession | null>>;
   /** Контекст пользователя (null до инициализации) */
   user: DeepReadonly<Ref<AWUserContext | null>>;
+  /** Стартовый параметр этого открытия (null до init и когда хост его не передал) */
+  startParam: Readonly<Ref<string | null>>;
   /** SDK успешно инициализирован */
   isReady: Readonly<Ref<boolean>>;
   /** Ошибка при инициализации */
@@ -61,6 +63,7 @@ export function useAWSdk(config: AWSDKConfig): UseAWSDKReturn {
   const sdk = shallowRef<AWSDK | null>(null);
   const session = ref<AWSession | null>(null);
   const user = ref<AWUserContext | null>(null);
+  const startParam = ref<string | null>(null);
   const isReady = ref(false);
   const error = ref<Error | null>(null);
 
@@ -86,6 +89,7 @@ export function useAWSdk(config: AWSDKConfig): UseAWSDKReturn {
       const s = await instance.init();
       session.value = s;
       user.value = s.userContext ?? null;
+      startParam.value = instance.startParam;
       isReady.value = true;
     } catch (e) {
       error.value = e instanceof Error ? e : new Error(String(e));
@@ -125,6 +129,7 @@ export function useAWSdk(config: AWSDKConfig): UseAWSDKReturn {
     sdk,
     session: readonly(session),
     user: readonly(user),
+    startParam: readonly(startParam),
     isReady: readonly(isReady),
     error: readonly(error),
   };

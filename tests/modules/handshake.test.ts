@@ -122,4 +122,31 @@ describe('performHandshake', () => {
       avatarUrl: 'https://t.me/i/userpic/320/abc.jpg',
     });
   });
+
+  it('возвращает startParam рядом с сессией и не кладёт его в session', async () => {
+    const transport = makeTransport(ParentToIframeMessageType.SDK_INIT_OK, {
+      sessionToken: 'tok-1',
+      grantedScopes: [],
+      expiresAt: 9999,
+      start_param: 'order_42',
+    });
+
+    const result = await performHandshake(transport, 'app-1', [], 5000, mockLogger);
+
+    expect(result.startParam).toBe('order_42');
+    expect(result.session).not.toHaveProperty('startParam');
+  });
+
+  it('camelCase startParam в SDK_INIT_OK не читается', async () => {
+    const transport = makeTransport(ParentToIframeMessageType.SDK_INIT_OK, {
+      sessionToken: 'tok-1',
+      grantedScopes: [],
+      expiresAt: 9999,
+      startParam: 'order_42',
+    });
+
+    const result = await performHandshake(transport, 'app-1', [], 5000, mockLogger);
+
+    expect(result.startParam).toBeNull();
+  });
 });

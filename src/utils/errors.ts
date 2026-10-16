@@ -9,6 +9,8 @@ import {
   ScopeErrorMessage,
   ScanQrErrorCodes,
   ScanQrErrorMessage,
+  OpenAppErrorCodes,
+  OpenAppErrorMessage,
 } from '../types/errors';
 
 /**
@@ -97,6 +99,19 @@ export class AWScanQrError extends AWSDKError {
   constructor(code: ScanQrErrorCodes, message?: string) {
     super(code, message ?? ScanQrErrorMessage[code]);
     this.name = 'AWScanQrError';
+    this.errorCode = code;
+  }
+}
+
+/**
+ * Ошибка открытия другой мини-апки
+ */
+export class AWOpenAppError extends AWSDKError {
+  public readonly errorCode: OpenAppErrorCodes;
+
+  constructor(code: OpenAppErrorCodes, message?: string) {
+    super(code, message ?? OpenAppErrorMessage[code]);
+    this.name = 'AWOpenAppError';
     this.errorCode = code;
   }
 }
