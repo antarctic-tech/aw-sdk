@@ -772,6 +772,51 @@ There is no caption argument: the wallet draws “the result goes to this app”
 The `timeout` from the config does not apply. The call waits until a result, a close, or
 `destroy()`, which rejects a scan that is still open.
 
+## File download
+
+The app runs inside an iframe or a WebView and cannot download files on its own:
+inside Telegram only Telegram can save a file, and in the mobile app the WebView
+ignores downloads. `downloadFile()` asks the wallet to do it — Telegram shows its
+download dialog, the mobile app hands the link to the system browser, and a regular
+browser downloads it directly.
+
+```typescript
+try {
+  const started = await sdk.downloadFile({
+    url: "https://api.example.com/exports/webhook-logs.csv",
+    fileName: "webhook-logs.csv",
+  });
+  if (!started) {
+    // the user declined the download dialog
+  }
+} catch (err) {
+  if (err instanceof AWDownloadFileError) {
+    // err.errorCode: invalid_download_params | not_active | unsupported | generic_error
+  } else {
+    throw err; // AWSDKError after destroy()
+  }
+}
+```
+
+`timeout` from the config does not apply: the user may take a while over the wallet's
+download dialog, so the call waits up to 10 minutes and is not retried — a retry
+would start a second download. If the wallet does not answer in time, the call
+rejects with `AWDownloadFileError` (`generic_error`). `destroy()` rejects a call that
+is still waiting with a plain `AWSDKError` (`Transport destroyed`).
+
+The file must be served over `https` — `blob:` and `data:` URLs cannot be downloaded
+by the wallet, so generate the file on your backend. Serve it with
+`Content-Disposition: attachment` so a regular browser saves it instead of opening it.
+The URL goes to the wallet exactly as you passed it (only trimmed), so presigned
+signatures stay valid. A URL that the browser would rewrite — `.`/`..` segments,
+a backslash, an unencoded space — is rejected instead of being silently changed.
+
+Resolves `true` once the download has started and `false` if the user declined.
+`AWDownloadFileError.errorCode`: `invalid_download_params` (not an `https` URL, a URL the
+browser would rewrite, or an empty `fileName` — nothing is sent to the host), `not_active` (the app is minimized or the
+wallet is in the background), `unsupported` (the host did not advertise
+`web_app_request_file_download`), `generic_error`.
+
 ## Haptic feedback
 
 Vibrates through the wallet, the same way native wallet controls do. Fire-and-forget:
@@ -889,6 +934,7 @@ Every error extends `AWSDKError`. Match with `instanceof`, not on `message`.
 | `AWTimeoutError`   | No response within `timeout`                                  | —                                               |
 | `AWScanQrError`    | QR scanner failed, was closed, or is unavailable              | `errorCode: ScanQrErrorCodes`                   |
 | `AWOpenAppError`   | Opening another app was rejected or the arguments are invalid | `errorCode: OpenAppErrorCodes`                  |
+| `AWDownloadFileError` | File download failed, is unavailable, or the arguments are invalid | `errorCode: DownloadFileErrorCodes`     |
 
 ```typescript
 import {
@@ -923,7 +969,7 @@ try {
 ```
 
 The code enums (`InitErrorCodes`, `SessionErrorCodes`, `ScopeErrorCodes`,
-`OperationErrorCodes`, `ScanQrErrorCodes`, `OpenAppErrorCodes`) and their default English messages
+`OperationErrorCodes`, `ScanQrErrorCodes`, `OpenAppErrorCodes`, `DownloadFileErrorCodes`) and their default English messages
 (`InitErrorMessage`, …) are exported too.
 
 ## Vue 3
@@ -974,8 +1020,8 @@ if (!sdk.isCommandAvailable(AWCommand.GetScopesData)) {
 - `sdk.isCommandAvailable(command)` — checks the `supportedCommands` map the
   host returned during the handshake. If the host reported nothing, required
   commands are assumed available. Optional ones are not: `scanQr()` needs an
-  explicit `web_app_open_scan_qr` entry, and `openApp()` needs `open_app`,
-  otherwise they throw `unsupported`.
+  explicit `web_app_open_scan_qr` entry, `openApp()` needs `open_app`, and
+  `downloadFile()` needs `web_app_request_file_download`, otherwise they throw `unsupported`.
   Theme, language and safe area count as available once a snapshot has arrived,
   even if they are missing from the map. Haptics and background color are
   fire-and-forget: an older wallet ignores them, and `init()` still succeeds.

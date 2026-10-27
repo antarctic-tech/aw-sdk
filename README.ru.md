@@ -759,6 +759,51 @@ try {
 `timeout` из конфига на сканер не действует. Вызов ждёт результат, закрытие или
 `destroy()`, который отклоняет ещё открытый скан.
 
+## Скачивание файла
+
+Приложение открыто в iframe или WebView и само скачать файл не может: внутри Telegram
+сохранить файл умеет только Telegram, а WebView мобильного приложения скачивания
+игнорирует. `downloadFile()` просит об этом кошелёк: Telegram показывает свой диалог
+скачивания, мобильное приложение отдаёт ссылку системному браузеру, обычный браузер
+скачивает файл сразу.
+
+```typescript
+try {
+  const started = await sdk.downloadFile({
+    url: "https://api.example.com/exports/webhook-logs.csv",
+    fileName: "webhook-logs.csv",
+  });
+  if (!started) {
+    // пользователь отказался в диалоге скачивания
+  }
+} catch (err) {
+  if (err instanceof AWDownloadFileError) {
+    // err.errorCode: invalid_download_params | not_active | unsupported | generic_error
+  } else {
+    throw err; // AWSDKError после destroy()
+  }
+}
+```
+
+`timeout` из конфига не действует: над диалогом скачивания в кошельке пользователь может
+думать долго, поэтому вызов ждёт до 10 минут, повторов нет — повтор начал бы второе
+скачивание. Если кошелёк не ответил за это время, вызов отклоняется `AWDownloadFileError`
+(`generic_error`). `destroy()` отклоняет вызов, который ещё ждёт ответ, обычной
+`AWSDKError` (`Transport destroyed`).
+
+Файл должен лежать по `https`-ссылке: `blob:` и `data:` кошелёк не скачает, поэтому
+формируйте файл на своём бэкенде. Отдавайте его с `Content-Disposition: attachment`,
+чтобы обычный браузер сохранил файл, а не открыл его.
+Ссылка уходит в кошелёк ровно такой, как вы её передали (только без пробелов по краям),
+поэтому подпись presigned-ссылки не ломается. Ссылку, которую браузер переписал бы, —
+с сегментами `.`/`..`, обратным слешем, незакодированным пробелом — SDK отклоняет,
+а не меняет молча.
+
+Резолвится `true`, когда скачивание началось, и `false`, если пользователь отказался.
+`AWDownloadFileError.errorCode`: `invalid_download_params` (не `https`-ссылка, ссылка, которую
+браузер переписал бы, или пустой `fileName` — на хост ничего не уходит), `not_active` (приложение свёрнуто или кошелёк в фоне),
+`unsupported` (хост не заявил `web_app_request_file_download`), `generic_error`.
+
 ## Тактильный отклик
 
 Вибрация через кошелёк, как у его собственных контролов. Без ответа; пока приложение
@@ -874,6 +919,7 @@ sdk.events.on("session.expired", () => {
 | `AWTimeoutError`   | Ответа не было дольше `timeout`                                   | —                                               |
 | `AWScanQrError`    | QR-сканер не открылся, закрыт или недоступен                      | `errorCode: ScanQrErrorCodes`                   |
 | `AWOpenAppError`   | Другая апка не открылась или аргументы невалидны                  | `errorCode: OpenAppErrorCodes`                  |
+| `AWDownloadFileError` | Файл не скачался, скачивание недоступно или аргументы невалидны | `errorCode: DownloadFileErrorCodes`          |
 
 ```typescript
 import {
@@ -908,7 +954,7 @@ try {
 ```
 
 Enum'ы кодов (`InitErrorCodes`, `SessionErrorCodes`, `ScopeErrorCodes`,
-`OperationErrorCodes`, `ScanQrErrorCodes`, `OpenAppErrorCodes`) и их дефолтные сообщения
+`OperationErrorCodes`, `ScanQrErrorCodes`, `OpenAppErrorCodes`, `DownloadFileErrorCodes`) и их дефолтные сообщения
 (`InitErrorMessage`, …) тоже экспортируются.
 
 ## Vue 3
@@ -959,8 +1005,8 @@ if (!sdk.isCommandAvailable(AWCommand.GetScopesData)) {
 - `sdk.isCommandAvailable(command)` — сверяется с картой `supportedCommands`,
   которую хост вернул при хендшейке. Если хост ничего не сообщил, обязательные
   команды считаются доступными. Необязательные — нет: `scanQr()` ждёт явной
-  записи `web_app_open_scan_qr`, а `openApp()` — `open_app`, иначе бросают
-  `unsupported`. Тема, язык и safe area становятся доступны, как только пришёл снимок, даже если их нет в
+  записи `web_app_open_scan_qr`, `openApp()` — `open_app`, а `downloadFile()` —
+  `web_app_request_file_download`, иначе бросают `unsupported`. Тема, язык и safe area становятся доступны, как только пришёл снимок, даже если их нет в
   карте. Тактильный отклик и цвет фона — без ответа: старый кошелёк их
   игнорирует, и `init()` всё равно завершается.
 - `COMMAND_VERSIONS` — минимальные версии команд, нужные этой сборке SDK.

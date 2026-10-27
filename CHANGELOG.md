@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.4.4](https://github.com/antarctic-tech/aw-sdk/compare/v0.4.3...v0.4.4) (2026-10-27)
+
+
+### Features
+
+* **FE-1873:** скачивание файла через кошелёк (downloadFile) ([e469972](https://github.com/antarctic-tech/aw-sdk/commit/e469972c0ae7c8779d56d5a460f31f5edbb5aa02))
+
+
+### Bug Fixes
+
+* **FE-1873:** ссылка уходит хосту как есть, документированы таймаут и destroy() ([8c881a7](https://github.com/antarctic-tech/aw-sdk/commit/8c881a759fce93adfd0c52cbb9cf73be5a3305ee))
+* **FE-1873:** таймаут downloadFile отдаётся как AWDownloadFileError ([5a676ce](https://github.com/antarctic-tech/aw-sdk/commit/5a676ceb83a932144c8236538110c76bcb915c69))
+
 ### [0.4.3](https://github.com/antarctic-tech/aw-sdk/compare/v0.4.2...v0.4.3) (2026-10-16)
 
 

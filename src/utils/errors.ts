@@ -11,6 +11,8 @@ import {
   ScanQrErrorMessage,
   OpenAppErrorCodes,
   OpenAppErrorMessage,
+  DownloadFileErrorCodes,
+  DownloadFileErrorMessage,
 } from '../types/errors';
 
 /**
@@ -112,6 +114,19 @@ export class AWOpenAppError extends AWSDKError {
   constructor(code: OpenAppErrorCodes, message?: string) {
     super(code, message ?? OpenAppErrorMessage[code]);
     this.name = 'AWOpenAppError';
+    this.errorCode = code;
+  }
+}
+
+/**
+ * Ошибка скачивания файла
+ */
+export class AWDownloadFileError extends AWSDKError {
+  public readonly errorCode: DownloadFileErrorCodes;
+
+  constructor(code: DownloadFileErrorCodes, message?: string) {
+    super(code, message ?? DownloadFileErrorMessage[code]);
+    this.name = 'AWDownloadFileError';
     this.errorCode = code;
   }
 }

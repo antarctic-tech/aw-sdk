@@ -1,6 +1,7 @@
 import { TypedEmitter } from './events/emitter';
 import { BackButtonModule } from './modules/backButton';
 import { BackgroundModule } from './modules/background';
+import { DownloadFileModule } from './modules/downloadFile';
 import { EnvironmentModule } from './modules/environment';
 import { performHandshake } from './modules/handshake';
 import { HapticFeedbackModule } from './modules/hapticFeedback';
@@ -21,6 +22,7 @@ import {
   OPTIONAL_COMMANDS,
   ParentToIframeMessageType,
   type AWMessage,
+  type DownloadFileParams,
   type ErrorPayload,
   type OpenAppParams,
 } from './types/protocol';
@@ -62,6 +64,7 @@ export class AWSDK {
   private scanQrModule: ScanQrModule;
   private openAppModule: OpenAppModule;
   private backgroundModule: BackgroundModule;
+  private downloadFileModule: DownloadFileModule;
 
   constructor(config: AWSDKConfig) {
     this.config = config;
@@ -97,6 +100,11 @@ export class AWSDK {
       () => this.isCommandAvailable(AWCommand.OpenApp),
     );
     this.backgroundModule = new BackgroundModule(this.transport, this.logger);
+    this.downloadFileModule = new DownloadFileModule(
+      this.transport,
+      this.logger,
+      () => this.isCommandAvailable(AWCommand.RequestFileDownload),
+    );
   }
 
   // ============================================================================
@@ -223,6 +231,25 @@ export class AWSDK {
    */
   openApp(params: OpenAppParams): Promise<void> {
     return this.openAppModule.open(params);
+  }
+
+  // ============================================================================
+  // File download
+  // ============================================================================
+
+  /**
+   * Скачать файл средствами кошелька: в Telegram — через его диалог скачивания,
+   * в мобильном приложении — через системный браузер, в браузере — обычной загрузкой.
+   * Файл — по https-ссылке (blob- и data-ссылки не подходят), сервер отдаёт его с Content-Disposition: attachment.
+   * Резолвится true, когда скачивание началось, и false, если пользователь отказался.
+   * Ссылка уходит хосту исходной строкой; ссылку, которую браузер переписал бы (`..`, `\`), SDK отклоняет.
+   * timeout из конфига не действует: ждёт ответа до 10 минут, без повторов (повтор начал бы второе скачивание).
+   * Отклоняется AWDownloadFileError: invalid_download_params (не https, переписываемая ссылка или пустое имя —
+   * на хост не уходит), generic_error (кошелёк не ответил за 10 минут, неизвестный статус или код ошибки хоста),
+   * not_active, unsupported (старый кошелёк). destroy() отклоняет ждущий вызов обычной AWSDKError.
+   */
+  downloadFile(params: DownloadFileParams): Promise<boolean> {
+    return this.downloadFileModule.download(params);
   }
 
   /**

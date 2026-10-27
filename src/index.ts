@@ -10,6 +10,9 @@ export type {
   SetBackgroundColorPayload,
   OpenAppParams,
   OpenAppPayload,
+  DownloadFileParams,
+  RequestFileDownloadPayload,
+  FileDownloadRequestedPayload,
 } from './types/protocol';
 
 // Окружение хоста: тема, язык, платформа, safe-area, видимость
@@ -64,6 +67,8 @@ export {
   ScanQrErrorMessage,
   OpenAppErrorCodes,
   OpenAppErrorMessage,
+  DownloadFileErrorCodes,
+  DownloadFileErrorMessage,
 } from './types/errors';
 
 // Классы ошибок
@@ -76,6 +81,7 @@ export {
   AWScopeError,
   AWScanQrError,
   AWOpenAppError,
+  AWDownloadFileError,
 } from './utils/errors';
 
 // Утилиты

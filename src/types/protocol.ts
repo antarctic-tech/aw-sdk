@@ -27,6 +27,7 @@ export enum IframeToParentMessageType {
   WEB_APP_OPEN_SCAN_QR = 'web_app_open_scan_qr',
   WEB_APP_TRIGGER_HAPTIC_FEEDBACK = 'web_app_trigger_haptic_feedback',
   WEB_APP_SET_BACKGROUND_COLOR = 'web_app_set_background_color',
+  WEB_APP_REQUEST_FILE_DOWNLOAD = 'web_app_request_file_download',
   OPEN_APP = 'OPEN_APP',
 }
 
@@ -52,6 +53,7 @@ export enum ParentToIframeMessageType {
   VISIBILITY_CHANGED = 'visibility_changed',
   QR_TEXT_RECEIVED = 'qr_text_received',
   SCAN_QR_CLOSED = 'scan_qr_closed',
+  FILE_DOWNLOAD_REQUESTED = 'file_download_requested',
   OPEN_APP_OK = 'OPEN_APP_OK',
   ERROR = 'ERROR',
 }
@@ -81,6 +83,7 @@ export enum AWCommand {
   OpenScanQr = 'web_app_open_scan_qr',
   TriggerHapticFeedback = 'web_app_trigger_haptic_feedback',
   SetBackgroundColor = 'web_app_set_background_color',
+  RequestFileDownload = 'web_app_request_file_download',
   OpenApp = 'open_app',
 }
 
@@ -100,6 +103,7 @@ export const COMMAND_VERSIONS: Record<AWCommand, number> = {
   [AWCommand.OpenScanQr]: 1,
   [AWCommand.TriggerHapticFeedback]: 1,
   [AWCommand.SetBackgroundColor]: 1,
+  [AWCommand.RequestFileDownload]: 1,
   [AWCommand.OpenApp]: 1,
 };
 
@@ -120,6 +124,7 @@ export const OPTIONAL_COMMANDS: ReadonlySet<AWCommand> = new Set([
   AWCommand.OpenScanQr,
   AWCommand.TriggerHapticFeedback,
   AWCommand.SetBackgroundColor,
+  AWCommand.RequestFileDownload,
   AWCommand.OpenApp,
 ]);
 
@@ -319,6 +324,23 @@ export type TriggerHapticFeedbackPayload =
 /** Payload web_app_set_background_color — #rrggbb, ответа нет */
 export interface SetBackgroundColorPayload {
   color: string;
+}
+
+/** Аргументы sdk.downloadFile: файл по https-ссылке и имя, под которым его сохранить */
+export interface DownloadFileParams {
+  url: string;
+  fileName: string;
+}
+
+/** Payload web_app_request_file_download — как у Telegram */
+export interface RequestFileDownloadPayload {
+  url: string;
+  file_name: string;
+}
+
+/** Payload file_download_requested: downloading — скачивание началось, cancelled — пользователь отказался */
+export interface FileDownloadRequestedPayload {
+  status: 'downloading' | 'cancelled';
 }
 
 /** Аргументы sdk.openApp. Пустой startParam на хост не уходит. */

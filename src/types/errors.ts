@@ -140,6 +140,26 @@ export const OpenAppErrorMessage: Record<OpenAppErrorCodes, string> = {
   [OpenAppErrorCodes.GenericError]: 'Something unexpected went wrong while opening the app.',
 };
 
+/**
+ * Коды ошибок скачивания файла
+ */
+export enum DownloadFileErrorCodes {
+  /** Хост не поддерживает скачивание (старый кошелёк) */
+  Unsupported = 'unsupported',
+  /** Приложение не на экране — скачивать может только активное приложение */
+  NotActive = 'not_active',
+  /** url не https, браузер переписал бы его или fileName пустой — на хост не уходит */
+  InvalidParams = 'invalid_download_params',
+  GenericError = 'generic_error',
+}
+
+export const DownloadFileErrorMessage: Record<DownloadFileErrorCodes, string> = {
+  [DownloadFileErrorCodes.Unsupported]: 'The host does not support file downloads.',
+  [DownloadFileErrorCodes.NotActive]: 'The app must be on screen to download a file.',
+  [DownloadFileErrorCodes.InvalidParams]: 'url must be an https URL the browser would not rewrite, and fileName must be a non-empty string.',
+  [DownloadFileErrorCodes.GenericError]: 'Something unexpected went wrong while downloading the file.',
+};
+
 export const ScopeErrorMessage: Record<ScopeErrorCodes, string> = {
   [ScopeErrorCodes.Rejected]: 'User rejected the scope request.',
   [ScopeErrorCodes.InvalidScope]: 'One or more requested scopes are invalid.',
