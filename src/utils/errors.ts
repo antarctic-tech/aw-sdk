@@ -13,6 +13,8 @@ import {
   OpenAppErrorMessage,
   DownloadFileErrorCodes,
   DownloadFileErrorMessage,
+  ShareUrlErrorCodes,
+  ShareUrlErrorMessage,
 } from '../types/errors';
 
 /**
@@ -127,6 +129,19 @@ export class AWDownloadFileError extends AWSDKError {
   constructor(code: DownloadFileErrorCodes, message?: string) {
     super(code, message ?? DownloadFileErrorMessage[code]);
     this.name = 'AWDownloadFileError';
+    this.errorCode = code;
+  }
+}
+
+/**
+ * Ошибка шаринга ссылки. Закрытие шита пользователем сюда не попадает: shareUrl резолвится false.
+ */
+export class AWShareUrlError extends AWSDKError {
+  public readonly errorCode: ShareUrlErrorCodes;
+
+  constructor(code: ShareUrlErrorCodes, message?: string) {
+    super(code, message ?? ShareUrlErrorMessage[code]);
+    this.name = 'AWShareUrlError';
     this.errorCode = code;
   }
 }

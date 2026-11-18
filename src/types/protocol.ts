@@ -28,6 +28,7 @@ export enum IframeToParentMessageType {
   WEB_APP_TRIGGER_HAPTIC_FEEDBACK = 'web_app_trigger_haptic_feedback',
   WEB_APP_SET_BACKGROUND_COLOR = 'web_app_set_background_color',
   WEB_APP_REQUEST_FILE_DOWNLOAD = 'web_app_request_file_download',
+  WEB_APP_SHARE_URL = 'web_app_share_url',
   OPEN_APP = 'OPEN_APP',
 }
 
@@ -54,6 +55,7 @@ export enum ParentToIframeMessageType {
   QR_TEXT_RECEIVED = 'qr_text_received',
   SCAN_QR_CLOSED = 'scan_qr_closed',
   FILE_DOWNLOAD_REQUESTED = 'file_download_requested',
+  SHARE_URL_OPENED = 'share_url_opened',
   OPEN_APP_OK = 'OPEN_APP_OK',
   ERROR = 'ERROR',
 }
@@ -84,6 +86,7 @@ export enum AWCommand {
   TriggerHapticFeedback = 'web_app_trigger_haptic_feedback',
   SetBackgroundColor = 'web_app_set_background_color',
   RequestFileDownload = 'web_app_request_file_download',
+  ShareUrl = 'web_app_share_url',
   OpenApp = 'open_app',
 }
 
@@ -104,6 +107,7 @@ export const COMMAND_VERSIONS: Record<AWCommand, number> = {
   [AWCommand.TriggerHapticFeedback]: 1,
   [AWCommand.SetBackgroundColor]: 1,
   [AWCommand.RequestFileDownload]: 1,
+  [AWCommand.ShareUrl]: 1,
   [AWCommand.OpenApp]: 1,
 };
 
@@ -125,6 +129,7 @@ export const OPTIONAL_COMMANDS: ReadonlySet<AWCommand> = new Set([
   AWCommand.TriggerHapticFeedback,
   AWCommand.SetBackgroundColor,
   AWCommand.RequestFileDownload,
+  AWCommand.ShareUrl,
   AWCommand.OpenApp,
 ]);
 
@@ -341,6 +346,26 @@ export interface RequestFileDownloadPayload {
 /** Payload file_download_requested: downloading — скачивание началось, cancelled — пользователь отказался */
 export interface FileDownloadRequestedPayload {
   status: 'downloading' | 'cancelled';
+}
+
+/** Аргументы sdk.shareUrl. Пустой title на хост не уходит. */
+export interface ShareUrlParams {
+  url: string;
+  title?: string;
+}
+
+/** Payload web_app_share_url. title есть только когда задан. */
+export interface ShareUrlPayload {
+  url: string;
+  title?: string;
+}
+
+/**
+ * Payload share_url_opened.
+ * opened — хост открыл шит, cancelled — пользователь его закрыл (это не ошибка).
+ */
+export interface ShareUrlOpenedPayload {
+  status: 'opened' | 'cancelled';
 }
 
 /** Аргументы sdk.openApp. Пустой startParam на хост не уходит. */

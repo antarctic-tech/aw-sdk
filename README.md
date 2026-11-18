@@ -9,8 +9,8 @@ SDK for embedded mini-apps in Antarctic Wallet (AW). It handles the secure
 iframe-to-parent channel, the handshake, session and scope management, and
 asking the wallet to show its **native** confirmation sheet for an operation.
 It also reads the host environment (theme, language, safe area, visibility) and
-calls host features: the QR scanner, haptics, the page background color, and
-opening another mini-app.
+calls host features: the QR scanner, haptics, the page background color,
+opening another mini-app, and sharing a link.
 
 Zero runtime dependencies. Works in an iframe and in a React Native WebView.
 
@@ -817,6 +817,39 @@ browser would rewrite, or an empty `fileName` — nothing is sent to the host), 
 wallet is in the background), `unsupported` (the host did not advertise
 `web_app_request_file_download`), `generic_error`.
 
+## Share a link
+
+Android WebView has no `navigator.share`. Only the wallet can open the system
+share sheet, so `shareUrl()` asks the host over the existing postMessage channel.
+The promise stays pending until the host answers `share_url_opened` with the same
+`requestId`.
+
+```typescript
+const opened = await sdk.shareUrl({
+  url: "https://cashback.example/r/42",
+  title: "Cashback",
+});
+if (!opened) {
+  // the user closed the sheet
+}
+```
+
+`url` is trimmed. It is sent only when it is an `http:` or `https:` URL of at most
+2048 characters. Anything else is not sent. `title` is optional: a blank string is
+left out, and a longer one is cut to 120 characters.
+
+Resolves `true` when the host opened the sheet and `false` when the user closed it.
+Closing the sheet does not throw. `timeout` from the config applies, and the call
+is not retried. A missing reply rejects with `AWTimeoutError`. `destroy()` rejects
+a call that is still waiting with a plain `AWSDKError`.
+
+`AWShareUrlError.errorCode`: `invalid_share_params` (bad `url` or a non-string
+`title` — nothing is sent), `not_active`, `unsupported` (the host did not advertise
+`web_app_share_url`; `init()` still succeeds and
+`sdk.isCommandAvailable(AWCommand.ShareUrl)` is `false`), `generic_error`.
+
+The host reply payload is `{ status: "opened" | "cancelled" }`.
+
 ## Haptic feedback
 
 Vibrates through the wallet, the same way native wallet controls do. Fire-and-forget:
@@ -935,6 +968,7 @@ Every error extends `AWSDKError`. Match with `instanceof`, not on `message`.
 | `AWScanQrError`    | QR scanner failed, was closed, or is unavailable              | `errorCode: ScanQrErrorCodes`                   |
 | `AWOpenAppError`   | Opening another app was rejected or the arguments are invalid | `errorCode: OpenAppErrorCodes`                  |
 | `AWDownloadFileError` | File download failed, is unavailable, or the arguments are invalid | `errorCode: DownloadFileErrorCodes`     |
+| `AWShareUrlError`  | The share sheet did not open, sharing is unavailable, or the link is invalid | `errorCode: ShareUrlErrorCodes`     |
 
 ```typescript
 import {
@@ -969,7 +1003,7 @@ try {
 ```
 
 The code enums (`InitErrorCodes`, `SessionErrorCodes`, `ScopeErrorCodes`,
-`OperationErrorCodes`, `ScanQrErrorCodes`, `OpenAppErrorCodes`, `DownloadFileErrorCodes`) and their default English messages
+`OperationErrorCodes`, `ScanQrErrorCodes`, `OpenAppErrorCodes`, `DownloadFileErrorCodes`, `ShareUrlErrorCodes`) and their default English messages
 (`InitErrorMessage`, …) are exported too.
 
 ## Vue 3
@@ -1021,7 +1055,8 @@ if (!sdk.isCommandAvailable(AWCommand.GetScopesData)) {
   host returned during the handshake. If the host reported nothing, required
   commands are assumed available. Optional ones are not: `scanQr()` needs an
   explicit `web_app_open_scan_qr` entry, `openApp()` needs `open_app`, and
-  `downloadFile()` needs `web_app_request_file_download`, otherwise they throw `unsupported`.
+  `downloadFile()` needs `web_app_request_file_download`, and `shareUrl()` needs
+  `web_app_share_url`, otherwise they throw `unsupported`.
   Theme, language and safe area count as available once a snapshot has arrived,
   even if they are missing from the map. Haptics and background color are
   fire-and-forget: an older wallet ignores them, and `init()` still succeeds.

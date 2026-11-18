@@ -9,7 +9,7 @@ SDK для встроенных мини-приложений Antarctic Wallet (
 безопасный канал iframe ↔ кошелёк, хендшейк, сессию и скоупы, а также запрос
 **нативного** листа подтверждения операции в кошельке. Читает окружение хоста
 (тема, язык, safe area, видимость) и вызывает его возможности: QR-сканер,
-тактильный отклик, цвет фона страницы и открытие другой мини-апки.
+тактильный отклик, цвет фона страницы, открытие другой мини-апки и шаринг ссылки.
 
 Без рантайм-зависимостей. Работает в iframe и в React Native WebView.
 
@@ -804,6 +804,38 @@ try {
 браузер переписал бы, или пустой `fileName` — на хост ничего не уходит), `not_active` (приложение свёрнуто или кошелёк в фоне),
 `unsupported` (хост не заявил `web_app_request_file_download`), `generic_error`.
 
+## Шаринг ссылки
+
+В Android WebView нет `navigator.share`. Системный шит может открыть только кошелёк,
+поэтому `shareUrl()` просит об этом хост по уже существующему каналу postMessage.
+Промис ждёт ответ `share_url_opened` с тем же `requestId`.
+
+```typescript
+const opened = await sdk.shareUrl({
+  url: "https://cashback.example/r/42",
+  title: "Cashback",
+});
+if (!opened) {
+  // пользователь закрыл шит
+}
+```
+
+`url` обрезается по краям. На хост уходит только `http:` или `https:` не длиннее
+2048 символов. Иначе сообщение не отправляется. `title` необязателен: пустая строка
+не кладётся, более длинная обрезается до 120 символов.
+
+Резолвится `true`, когда хост открыл шит, и `false`, если пользователь его закрыл.
+Закрытие шита — не ошибка и не исключение. Действует `timeout` из конфига, повторов нет.
+Если ответа нет, вызов отклоняется `AWTimeoutError`. `destroy()` отклоняет вызов,
+который ещё ждёт, обычной `AWSDKError`.
+
+`AWShareUrlError.errorCode`: `invalid_share_params` (плохой `url` или `title` не строка —
+на хост ничего не уходит), `not_active`, `unsupported` (хост не заявил
+`web_app_share_url`; `init()` при этом проходит, а
+`sdk.isCommandAvailable(AWCommand.ShareUrl)` возвращает `false`), `generic_error`.
+
+Ответ хоста: `{ status: "opened" | "cancelled" }`.
+
 ## Тактильный отклик
 
 Вибрация через кошелёк, как у его собственных контролов. Без ответа; пока приложение
@@ -920,6 +952,7 @@ sdk.events.on("session.expired", () => {
 | `AWScanQrError`    | QR-сканер не открылся, закрыт или недоступен                      | `errorCode: ScanQrErrorCodes`                   |
 | `AWOpenAppError`   | Другая апка не открылась или аргументы невалидны                  | `errorCode: OpenAppErrorCodes`                  |
 | `AWDownloadFileError` | Файл не скачался, скачивание недоступно или аргументы невалидны | `errorCode: DownloadFileErrorCodes`          |
+| `AWShareUrlError`  | Шит не открылся, шаринг недоступен или ссылка невалидна       | `errorCode: ShareUrlErrorCodes`              |
 
 ```typescript
 import {
@@ -954,7 +987,7 @@ try {
 ```
 
 Enum'ы кодов (`InitErrorCodes`, `SessionErrorCodes`, `ScopeErrorCodes`,
-`OperationErrorCodes`, `ScanQrErrorCodes`, `OpenAppErrorCodes`, `DownloadFileErrorCodes`) и их дефолтные сообщения
+`OperationErrorCodes`, `ScanQrErrorCodes`, `OpenAppErrorCodes`, `DownloadFileErrorCodes`, `ShareUrlErrorCodes`) и их дефолтные сообщения
 (`InitErrorMessage`, …) тоже экспортируются.
 
 ## Vue 3
@@ -1005,8 +1038,8 @@ if (!sdk.isCommandAvailable(AWCommand.GetScopesData)) {
 - `sdk.isCommandAvailable(command)` — сверяется с картой `supportedCommands`,
   которую хост вернул при хендшейке. Если хост ничего не сообщил, обязательные
   команды считаются доступными. Необязательные — нет: `scanQr()` ждёт явной
-  записи `web_app_open_scan_qr`, `openApp()` — `open_app`, а `downloadFile()` —
-  `web_app_request_file_download`, иначе бросают `unsupported`. Тема, язык и safe area становятся доступны, как только пришёл снимок, даже если их нет в
+  записи `web_app_open_scan_qr`, `openApp()` — `open_app`, `downloadFile()` —
+  `web_app_request_file_download`, а `shareUrl()` — `web_app_share_url`, иначе бросают `unsupported`. Тема, язык и safe area становятся доступны, как только пришёл снимок, даже если их нет в
   карте. Тактильный отклик и цвет фона — без ответа: старый кошелёк их
   игнорирует, и `init()` всё равно завершается.
 - `COMMAND_VERSIONS` — минимальные версии команд, нужные этой сборке SDK.

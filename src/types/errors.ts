@@ -160,6 +160,26 @@ export const DownloadFileErrorMessage: Record<DownloadFileErrorCodes, string> = 
   [DownloadFileErrorCodes.GenericError]: 'Something unexpected went wrong while downloading the file.',
 };
 
+/**
+ * Коды ошибок шаринга ссылки
+ */
+export enum ShareUrlErrorCodes {
+  /** Хост не заявил web_app_share_url (старый кошелёк) */
+  Unsupported = 'unsupported',
+  /** Приложение не на экране — шит открывает только активное приложение */
+  NotActive = 'not_active',
+  /** url не http(s) или длиннее 2048, либо title не строка — на хост не уходит */
+  InvalidParams = 'invalid_share_params',
+  GenericError = 'generic_error',
+}
+
+export const ShareUrlErrorMessage: Record<ShareUrlErrorCodes, string> = {
+  [ShareUrlErrorCodes.Unsupported]: 'The host does not support sharing a link.',
+  [ShareUrlErrorCodes.NotActive]: 'The app must be on screen to share a link.',
+  [ShareUrlErrorCodes.InvalidParams]: 'url must be an http(s) URL of at most 2048 characters.',
+  [ShareUrlErrorCodes.GenericError]: 'Something unexpected went wrong while sharing the link.',
+};
+
 export const ScopeErrorMessage: Record<ScopeErrorCodes, string> = {
   [ScopeErrorCodes.Rejected]: 'User rejected the scope request.',
   [ScopeErrorCodes.InvalidScope]: 'One or more requested scopes are invalid.',

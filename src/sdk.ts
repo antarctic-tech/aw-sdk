@@ -10,6 +10,7 @@ import { OperationsModule } from './modules/operations';
 import { ScanQrModule } from './modules/scanQr';
 import { ScopesModule } from './modules/scopes';
 import { SessionModule } from './modules/session';
+import { ShareUrlModule } from './modules/shareUrl';
 import { PostMessageTransport } from './transport/postMessage';
 import type { AWSDKConfig } from './types/config';
 import type { AWColorScheme, AWInsets, AWPlatform } from './types/environment';
@@ -25,6 +26,7 @@ import {
   type DownloadFileParams,
   type ErrorPayload,
   type OpenAppParams,
+  type ShareUrlParams,
 } from './types/protocol';
 import type { AWSession, AWSessionStatusResponse } from './types/session';
 import type { AWUserContext } from './types/user';
@@ -65,6 +67,7 @@ export class AWSDK {
   private openAppModule: OpenAppModule;
   private backgroundModule: BackgroundModule;
   private downloadFileModule: DownloadFileModule;
+  private shareUrlModule: ShareUrlModule;
 
   constructor(config: AWSDKConfig) {
     this.config = config;
@@ -104,6 +107,12 @@ export class AWSDK {
       this.transport,
       this.logger,
       () => this.isCommandAvailable(AWCommand.RequestFileDownload),
+    );
+    this.shareUrlModule = new ShareUrlModule(
+      this.transport,
+      timeout,
+      this.logger,
+      () => this.isCommandAvailable(AWCommand.ShareUrl),
     );
   }
 
@@ -252,6 +261,25 @@ export class AWSDK {
     return this.downloadFileModule.download(params);
   }
 
+  // ============================================================================
+  // Share URL
+  // ============================================================================
+
+  /**
+   * Открыть системный шит «поделиться» силами кошелька.
+   * В Android WebView нет navigator.share, шит может открыть только хост.
+   * url обрезается по краям: только http(s) и не длиннее 2048, иначе на хост не уходит.
+   * title необязателен: пустая строка не отправляется, длиннее 120 символов обрезается.
+   * true — хост открыл шит, false — пользователь его закрыл (это не ошибка).
+   * Ждёт share_url_opened с тем же requestId. timeout из конфига, без повторов.
+   * Отклоняется AWShareUrlError: invalid_share_params, not_active, unsupported
+   * (старый кошелёк; init из-за этого не падает), generic_error.
+   * Нет ответа — AWTimeoutError. destroy() отклоняет ждущий вызов обычной AWSDKError.
+   */
+  shareUrl(params: ShareUrlParams): Promise<boolean> {
+    return this.shareUrlModule.share(params);
+  }
+
   /**
    * Подписанный OIDC id_token текущей сессии (доступен после init).
    * Форвардь его на свой бэкенд: тот проверит подпись через JWKS хоста и достанет
@@ -272,8 +300,8 @@ export class AWSDK {
     if (ENVIRONMENT_COMMANDS.has(command)) {
       return this.environmentModule.isSupported || isCommandAvailable(command, this.supportedCommands);
     }
-    // Прочие необязательные команды (сканер) требуют явного подтверждения хоста: без него
-    // запрос ушёл бы в пустоту, а ждать ответа сканера можно долго
+    // Прочие необязательные команды требуют явного подтверждения хоста: без него
+    // запрос ушёл бы в пустоту
     if (OPTIONAL_COMMANDS.has(command)) return isCommandAvailable(command, this.supportedCommands);
     if (Object.keys(this.supportedCommands).length === 0) return true;
     return isCommandAvailable(command, this.supportedCommands);

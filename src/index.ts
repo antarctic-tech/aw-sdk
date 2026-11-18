@@ -13,6 +13,9 @@ export type {
   DownloadFileParams,
   RequestFileDownloadPayload,
   FileDownloadRequestedPayload,
+  ShareUrlParams,
+  ShareUrlPayload,
+  ShareUrlOpenedPayload,
 } from './types/protocol';
 
 // Окружение хоста: тема, язык, платформа, safe-area, видимость
@@ -69,6 +72,8 @@ export {
   OpenAppErrorMessage,
   DownloadFileErrorCodes,
   DownloadFileErrorMessage,
+  ShareUrlErrorCodes,
+  ShareUrlErrorMessage,
 } from './types/errors';
 
 // Классы ошибок
@@ -82,6 +87,7 @@ export {
   AWScanQrError,
   AWOpenAppError,
   AWDownloadFileError,
+  AWShareUrlError,
 } from './utils/errors';
 
 // Утилиты

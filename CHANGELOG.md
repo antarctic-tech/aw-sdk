@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.4.5](https://github.com/antarctic-tech/aw-sdk/compare/v0.4.4...v0.4.5) (2026-11-18)
+
+
+### Features
+
+* **aw-2015:** add share url method ([b3ce3db](https://github.com/antarctic-tech/aw-sdk/commit/b3ce3db65f9dd00505827027b2a4a73bff017027))
+
 ### [0.4.4](https://github.com/antarctic-tech/aw-sdk/compare/v0.4.3...v0.4.4) (2026-10-27)
 
 

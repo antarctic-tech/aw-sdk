@@ -45,6 +45,17 @@ describe('protocol', () => {
       expect(validateSupportedCommands(supported)).toBe(true);
     });
 
+    it('web_app_share_url версии 1 и не блокирует старый кошелёк', () => {
+      expect(COMMAND_VERSIONS[AWCommand.ShareUrl]).toBe(1);
+      expect(OPTIONAL_COMMANDS.has(AWCommand.ShareUrl)).toBe(true);
+
+      const supported = { ...COMMAND_VERSIONS };
+      delete (supported as Partial<Record<AWCommand, number>>)[AWCommand.ShareUrl];
+      expect(validateSupportedCommands(supported)).toBe(true);
+      expect(isCommandAvailable(AWCommand.ShareUrl, supported)).toBe(false);
+      expect(isCommandAvailable(AWCommand.ShareUrl, { [AWCommand.ShareUrl]: 1 })).toBe(true);
+    });
+
     it('команды окружения необязательны для старого кошелька', () => {
       const supported = { ...COMMAND_VERSIONS };
       for (const command of OPTIONAL_COMMANDS) {
